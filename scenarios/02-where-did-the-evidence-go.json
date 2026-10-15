@@ -12,15 +12,47 @@
   "labels": {
     "victim": "Dana",
     "victimFull": "Dana Reyes",
-    "domain": "halvorsen-login.example",
-    "recipients": 12,
     "rootCause": "Dana visited halvorsen-login.example (registered 3 days earlier) one minute before the suspicious sign-in",
     "attackSummary": "adversary-in-the-middle phishing; Dana's session token was stolen and replayed from 198.51.100.77 (residential ISP, Illinois)",
     "hotEvidence": "a sign-in from a never-seen device, followed by mailbox access through the mail API",
     "ambiguousNote": "The sign-in came from an in-state residential IP with MFA approved. That looks legitimate, so the analyst works through mailbox audit logs and other hot data.",
     "objectiveImpact": "A fraudulent \"Brightline Freight changed bank details\" request went from Dana's mailbox to the AP manager. Finance now has to catch it by hand before Friday's payment run.",
     "undetected": "No alert fired at any point. The fraud will most likely be noticed by finance days later, if at all.",
-    "mitre": "T1566.002 phishing link, T1557 adversary-in-the-middle, T1550.004 web session cookie, T1114.003 email forwarding rule"
+    "mitre": "T1566.002 phishing link, T1557 adversary-in-the-middle, T1550.004 web session cookie, T1114.003 email forwarding rule",
+    "accessCut": "Dana's sessions were revoked",
+    "lureGone": "the phishing email was purged from all inboxes",
+    "indicatorBlocked": "halvorsen-login.example was blocked",
+    "containDone": "Dana's sessions revoked, password reset, any attacker inbox rules removed",
+    "blockTitle": "Phishing domain blocked, emails purged",
+    "blockDone": "halvorsen-login.example blocked at DNS/proxy; the lure removed from all 12 inboxes",
+    "revokeDone": "Additional compromised account(s) contained",
+    "scopeSearch": "other visitors to the domain",
+    "scopeTitle": "Other visitors identified",
+    "scopeFound": "Visited the domain",
+    "scopeLost": "Credentials stolen",
+    "scopeNoneLost": "No one else entered credentials.",
+    "humanPivot": "Pivots across the identity provider, mailbox audit, and web logs, one console at a time.",
+    "confirmAsk": "Tier-2 asks Dana to confirm",
+    "confirmReply": "Dana replies: \"That wasn't me\"",
+    "playbook": "SOAR revokes sessions, resets the password, and removes inbox rules.",
+    "rootMissingNote": "The other targets of the phishing email stay exposed.",
+    "rootSearch": "Dana's web activity before the suspicious sign-in",
+    "fullFinding": "The same email went to 12 people.",
+    "fullPackage": "revoke Dana's sessions and reset password; block halvorsen-login.example; purge the email from all 12 inboxes",
+    "containPackage": "revoke Dana's sessions, reset password, remove inbox rules",
+    "blockPackage": "block halvorsen-login.example; purge the email from all 12 inboxes",
+    "revokeVerb": "revoke sessions for",
+    "pivotTitle": "Agent pivots to email logs",
+    "pivotText": "Same domain found in a message sent to 12 people.",
+    "huntSame": "Finds the same phishing domain.",
+    "linkedNote": "Same user, same session.",
+    "objectiveShort": "Fraudulent payment request sent",
+    "objectiveStatus": "fraudulent payment request sent",
+    "accessLabel": "Attacker in mailbox",
+    "accessNever": "never got in",
+    "compromisedLabel": "Compromised users",
+    "secondVictim": "the phishing link was still live when another employee clicked it",
+    "indicatorKind": "phishing domain"
   },
   "events": [
     {
@@ -86,7 +118,6 @@
       "actor": "user",
       "source": "dns",
       "promotable": true,
-      "clicker": "Dana Reyes",
       "title": "Dana clicks the link",
       "summary": "Her laptop looks up and opens halvorsen-login.example, a domain registered 3 days ago.",
       "raw": {
@@ -108,7 +139,8 @@
         "enrichment": {
           "domain_age_days": 3
         }
-      }
+      },
+      "contact": "Dana Reyes"
     },
     {
       "id": "E3",
@@ -154,9 +186,9 @@
       "requires": [
         "attackerAccess"
       ],
-      "mailboxAccess": true,
       "title": "Attacker starts reading Dana's mailbox",
-      "summary": "Replays the stolen token and reads mail through the mail API."
+      "summary": "Replays the stolen token and reads mail through the mail API.",
+      "accessStart": true
     },
     {
       "id": "E5",
@@ -202,9 +234,9 @@
       "requires": [
         "lureReachable"
       ],
-      "clicker": "Priya Natarajan",
       "title": "Priya clicks the same link",
-      "summary": "Priya gets suspicious at the password page and closes it. No credentials lost."
+      "summary": "Priya gets suspicious at the password page and closes it. No credentials lost.",
+      "contact": "Priya Natarajan"
     },
     {
       "id": "E6",
@@ -257,10 +289,10 @@
       "requires": [
         "lureReachable"
       ],
-      "clicker": "Sam Okafor",
       "compromises": "Sam Okafor",
       "title": "Sam opens the email after lunch and signs in",
-      "summary": "The link still works, so Sam's session is stolen too."
+      "summary": "The link still works, so Sam's session is stolen too.",
+      "contact": "Sam Okafor"
     }
   ],
   "rules": [
@@ -337,5 +369,99 @@
         "mitre": "T1566.002 phishing link, T1557 adversary-in-the-middle, T1550.004 web session cookie, T1114.002 remote email collection"
       }
     }
-  ]
+  ],
+  "pipelineDemo": {
+    "source": "dns",
+    "caption": "Dana's laptop looking up the phishing domain at 09:12",
+    "pattern": "newly registered domain, 3 days old",
+    "stages": {
+      "raw": "<134>Mar 10 14:12:41 hlv-dns01 named[2231]: client @0x7f3a 10.20.14.42#53122 (halvorsen-login.example): query: halvorsen-login.example IN A +E(0) (10.0.0.53)",
+      "parsed": {
+        "timestamp": "Mar 10 14:12:41",
+        "host": "hlv-dns01",
+        "process": "named[2231]",
+        "client_ip": "10.20.14.42",
+        "client_port": 53122,
+        "query": "halvorsen-login.example",
+        "qclass": "IN",
+        "qtype": "A",
+        "flags": "+E(0)",
+        "resolver": "10.0.0.53"
+      },
+      "normalized": {
+        "class_name": "DNS Activity",
+        "time": "2026-03-10T14:12:41Z",
+        "src_endpoint": {
+          "ip": "10.20.14.42",
+          "port": 53122
+        },
+        "query": {
+          "hostname": "halvorsen-login.example",
+          "type": "A",
+          "class": "IN"
+        },
+        "metadata": {
+          "product": "resolver",
+          "log_name": "named",
+          "host": "hlv-dns01"
+        },
+        "unmapped": {
+          "flags": "+E(0)",
+          "resolver": "10.0.0.53"
+        }
+      },
+      "enriched": {
+        "class_name": "DNS Activity",
+        "time": "2026-03-10T14:12:41Z",
+        "src_endpoint": {
+          "ip": "10.20.14.42",
+          "port": 53122,
+          "hostname": "HLV-FIN-LT042",
+          "owner": "dana.reyes",
+          "department": "Finance"
+        },
+        "query": {
+          "hostname": "halvorsen-login.example",
+          "type": "A",
+          "class": "IN"
+        },
+        "enrichment": {
+          "domain_age_days": 3,
+          "registrar": "Example Registrar",
+          "lookalike_of": "halvorsen.example",
+          "threat_intel": "no match yet"
+        },
+        "metadata": {
+          "product": "resolver",
+          "log_name": "named",
+          "host": "hlv-dns01"
+        },
+        "unmapped": {
+          "flags": "+E(0)",
+          "resolver": "10.0.0.53"
+        }
+      },
+      "reduced": {
+        "class_name": "DNS Activity",
+        "time": "2026-03-10T14:12:41Z",
+        "src_endpoint": {
+          "ip": "10.20.14.42",
+          "hostname": "HLV-FIN-LT042",
+          "owner": "dana.reyes"
+        },
+        "query": {
+          "hostname": "halvorsen-login.example",
+          "type": "A"
+        },
+        "enrichment": {
+          "domain_age_days": 3,
+          "lookalike_of": "halvorsen.example"
+        }
+      }
+    },
+    "notes": {
+      "enriched": "The domain age and the lookalike match are what make this one event stand out from the millions of normal lookups that day.",
+      "reduced": "Removed: client port, resolver internals, query class, flags, and the metadata block. Repeated lookups of the same name within 60 seconds are collapsed into one record."
+    }
+  }
 }

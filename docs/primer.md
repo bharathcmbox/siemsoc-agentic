@@ -91,6 +91,8 @@ The pipeline enriches events as they arrive (for example, "this domain was regis
 - ❌ It only catches patterns someone thought of in advance. The pattern list needs upkeep, and the pipeline now depends on its enrichment lookups.
 - ➜ Unanticipated patterns still need hunting over the cold data, by people or a hunting agent.
 
+The same idea works for firewall logs: a connection to an IP address on a threat-intelligence list is copied to the hot tier, while the millions of routine connections are not.
+
 ### Summary
 
 | | Index-at-ingest | Tiered | Federated / lake |

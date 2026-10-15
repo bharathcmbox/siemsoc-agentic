@@ -36,11 +36,15 @@ Pipeline reduction (dedup, field trimming) applies to all architectures: default
 
 | Parameter | Default | Range | Source |
 |---|---|---|---|
-| Share of DNS/proxy events matching a promotion pattern | 0.1% | 0.01 – 2% | Illustrative |
-| Default promotion patterns | Newly registered domain (< 7 days); domain on threat-intel list; lookalike of a company domain | | Illustrative |
+| Share of DNS/proxy and firewall events matching a promotion pattern | 0.1% | 0.01 – 2% | Illustrative |
+| Default promotion patterns | DNS/proxy: newly registered domain (< 7 days), domain on threat-intel list, lookalike of a company domain. Firewall: destination IP on threat-intel list | | Illustrative |
 | Added pipeline latency from enrichment | 2 s | 0.5 – 30 s | Illustrative |
 
-Promoted events are **copied** to the hot tier and still stored in cheap storage or the lake, so cold-data hunting still has the full record. With defaults, the extra cost is 400 GB/day × 0.1% × 0.7 × 30 × $2.00 ≈ **$17/month**.
+Promoted events are **copied** to the hot tier and still stored in cheap storage or the lake, so cold-data hunting still has the full record. With defaults, the extra cost is (400 + 350) GB/day × 0.1% × 0.7 × 30 × $2.00 ≈ **$31/month**.
+
+### Budget cap
+
+If the monthly cost is over the cap, the engine stops collecting sources one at a time until it fits: lowest "detection value" first, then the largest. High-value sources are never dropped. Dropped sources can't be detected on or searched later, by humans or agents.
 
 ## 3. Storage and query cost
 
@@ -48,6 +52,7 @@ Expressed as a blended monthly cost, not any vendor's price list.
 
 | Parameter | Default | Range | Source |
 |---|---|---|---|
+| Monthly SIEM budget cap | None (scenario 5 sets $15,000) | $0 – $50,000 | Illustrative |
 | Hot indexed tier — cost per GB ingested | $2.00 | $0.50 – $6.00 | Illustrative (blended license + infra) |
 | Cheap tier — cost per GB ingested | $0.15 | $0.02 – $0.50 | Illustrative |
 | Cheap tier — cost per search job | $5 | $0 – $50 | Illustrative |

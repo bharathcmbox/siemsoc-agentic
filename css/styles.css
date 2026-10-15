@@ -175,6 +175,44 @@ header.top p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
   cursor: pointer; font-weight: 700; font-size: 0.8rem; line-height: 1;
 }
 
+/* ---------- architecture diagram ---------- */
+details.arch-wrap > summary { cursor: pointer; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+.arch-scroll { overflow-x: auto; margin-top: 4px; }
+svg.arch { display: block; width: 100%; min-width: 540px; height: auto; font-family: var(--font); }
+svg.arch .node { cursor: pointer; }
+svg.arch .node rect { fill: var(--surface-2); stroke: var(--border); stroke-width: 1.2; transition: fill .3s, stroke .3s; }
+svg.arch .node:hover rect, svg.arch .node:focus rect { stroke: var(--accent); }
+svg.arch .node:focus { outline: none; }
+svg.arch .node:focus-visible rect { stroke: var(--accent); stroke-width: 2.5; }
+svg.arch .lbl { font-size: 11.5px; font-weight: 600; fill: var(--text); pointer-events: none; }
+svg.arch .sub { font-size: 9.5px; fill: var(--muted); pointer-events: none; }
+svg.arch .stage { font-size: 10px; fill: var(--muted); pointer-events: none; }
+svg.arch .node.hot rect { stroke: var(--human); }
+svg.arch .node.cold rect { stroke-dasharray: 4 3; }
+svg.arch .node.dropped rect { stroke: var(--bad); stroke-dasharray: 3 3; fill: var(--bad-soft); }
+svg.arch .node.unused { opacity: 0.45; }
+svg.arch .node.agent rect { stroke: var(--agent); }
+svg.arch .node.hunt rect { stroke: var(--agent); stroke-dasharray: 4 3; }
+svg.arch .node.pipeline rect { stroke: var(--accent); }
+svg.arch .edge { fill: none; stroke: var(--border); stroke-width: 1.5; }
+svg.arch .edge.hot { stroke: var(--human); opacity: 0.6; }
+svg.arch .edge.cold { stroke: var(--muted); stroke-dasharray: 4 3; opacity: 0.6; }
+svg.arch .edge.drop { stroke: var(--bad); stroke-dasharray: 2 3; opacity: 0.7; }
+svg.arch .edge.promo { stroke: var(--good); stroke-width: 2; stroke-dasharray: 5 3; }
+svg.arch .promo-lbl { font-size: 9px; fill: var(--good); font-weight: 700; }
+svg.arch .dot { fill: var(--human); stroke: var(--surface); stroke-width: 1.5; }
+svg.arch .dot.promoted { fill: var(--good); }
+svg.arch .dot.cheap, svg.arch .dot.lake { fill: var(--muted); }
+svg.arch .dot.dropped { fill: var(--bad); }
+svg.arch .node.pulse rect { animation: node-pulse 1s ease-out; }
+svg.arch .node.miss rect { animation: node-miss 1.4s ease-out; }
+@keyframes node-pulse { 0% { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; } 100% { } }
+@keyframes node-miss { 0% { fill: var(--detect-soft); stroke: var(--detect); stroke-width: 3; } 100% { } }
+@media (prefers-reduced-motion: reduce) { svg.arch .node.pulse rect, svg.arch .node.miss rect { animation: none; } }
+.arch-foot { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; justify-content: space-between; margin-top: 4px; }
+.arch-explain { margin: 0; font-size: 0.82rem; color: var(--muted); flex: 1 1 260px; }
+.btn.small { padding: 3px 10px; font-size: 0.8rem; }
+
 /* ---------- counters ---------- */
 .counters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 @media (max-width: 420px) { .counters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -258,6 +296,26 @@ details.params > summary { cursor: pointer; font-weight: 600; font-size: 1.05rem
 .param { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; margin-bottom: 8px; font-size: 0.82rem; }
 .param input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
 .param output { font-family: var(--mono); }
+
+/* ---------- pipeline dialog ---------- */
+dialog.wide { width: min(820px, calc(100vw - 32px)); }
+.steps { display: flex; flex-wrap: wrap; gap: 4px; margin: 10px 0 6px; }
+.step { border: 1px solid var(--border); background: var(--surface-2); border-radius: 999px; padding: 3px 12px; cursor: pointer; font-size: 0.82rem; }
+.step[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .step[aria-selected="true"] { color: #0d1117; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .step[aria-selected="true"] { color: #0d1117; } }
+pre.code { background: var(--surface-2); border-radius: 8px; padding: 10px; font: 0.75rem/1.45 var(--mono); overflow-x: auto; white-space: pre-wrap; word-break: break-word; max-height: 40vh; overflow-y: auto; }
+.vol { display: grid; gap: 4px; margin-top: 6px; }
+.vol-row { display: grid; grid-template-columns: minmax(120px, 15em) 1fr 5em; gap: 8px; align-items: center; font-size: 0.8rem; }
+.vol-bar { background: var(--surface-2); border-radius: 4px; height: 12px; overflow: hidden; }
+.vol-fill { display: block; height: 100%; border-radius: 4px; background: var(--muted); }
+.vol-fill.in { background: var(--accent); }
+.vol-fill.cut { background: var(--border); }
+.vol-fill.hot { background: var(--human); }
+.vol-fill.drop { background: var(--bad); }
+.vol-fill.promo { background: var(--good); }
+.vol-num { font-family: var(--mono); text-align: right; }
+@media (max-width: 480px) { .vol-row { grid-template-columns: 1fr 4.5em; } .vol-bar { grid-column: 1 / -1; grid-row: 2; } }
 
 /* ---------- dialog ---------- */
 dialog {

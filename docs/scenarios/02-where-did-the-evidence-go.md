@@ -140,16 +140,16 @@ This is the constructive answer to message 4. The pipeline enriches each DNS/pro
 
 | Run | Plays out like | First alert | Contained | Fraud sent | Compromised users | Monthly data cost |
 |---|---|---|---|---|---|---|
-| B+ Tiered / Trad + routing | Run A | 09:14 | 10:51 | No | 1 | $12,879 |
-| C+ Lake / Trad + routing | Run A | 09:14 | 10:51 | No | 1 | $11,398 |
-| D+ Tiered / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | $12,879 |
-| E+ Lake / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | $11,398 |
+| B+ Tiered / Trad + routing | Run A | 09:14 | 10:51 | No | 1 | $12,894 |
+| C+ Lake / Trad + routing | Run A | 09:14 | 10:51 | No | 1 | $11,413 |
+| D+ Tiered / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | $12,894 |
+| E+ Lake / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | $11,413 |
 
 The **quiet attacker** (variant 2b) is also caught at 09:14 with the toggle on, because the alert no longer depends on the forwarding rule.
 
 **What the UI should say when the toggle is flipped in this scenario:**
 
-> Detection-aware routing copied **1 event** out of about 400 GB/day of DNS and proxy logs into real-time detection: Dana's visit to a 3-day-old domain. That one event moved the first alert from 09:48 to 09:14, for about $17 a month.
+> Detection-aware routing copied **1 event** out of about 525 GB/day of DNS, proxy, and firewall logs into real-time detection: Dana's visit to a 3-day-old domain. That one event moved the first alert from 09:48 to 09:14, for about $31 a month.
 >
 > It only works for patterns you anticipated. An attacker using a 30-day-old domain wouldn't be promoted. That's what the hunting agent is for.
 

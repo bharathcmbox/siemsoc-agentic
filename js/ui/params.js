@@ -4,6 +4,8 @@ import { PARAMS, PARAM_GROUPS, defaultParams } from '../engine/assumptions.js';
 
 function fmt(p, v) {
   if (p.unit === 'bool') return v ? 'Yes' : 'No';
+  if (v === 0 && p.zeroLabel) return p.zeroLabel;
+  if (p.unit === '$' && v >= 1000) return '$' + Number(v).toLocaleString('en-US');
   const decimals = (String(p.step).split('.')[1] ?? '').length;
   const n = Number(v).toFixed(decimals);
   if (p.unit === '$') return `$${n}`;

@@ -1,17 +1,18 @@
 // Executive summary: final metrics side by side, plus plain-language takeaways.
 import { h, usd } from './dom.js';
 import { fmtTime, fmtDuration, ARCH_LABELS, MODEL_LABELS } from '../engine/simulate.js';
+import { SOURCES } from '../engine/assumptions.js';
 
 const t = v => (v == null ? null : v);
 
 // Each row: label, how to show a side's value, and a numeric key where lower is better.
 const ROWS = [
-  { label: 'First alert', show: m => m.firstAlertAt != null ? `${fmtTime(m.firstAlertAt)} (${fmtDuration(m.mttd)} after the phishing email)` : 'Never', key: m => t(m.firstAlertAt) ?? Infinity },
+  { label: 'First alert', show: m => m.firstAlertAt != null ? `${fmtTime(m.firstAlertAt)} (${fmtDuration(m.mttd)} after the attack began)` : 'Never', key: m => t(m.firstAlertAt) ?? Infinity },
   { label: 'Contained', show: m => m.containedAt != null ? `${fmtTime(m.containedAt)} (${fmtDuration(m.mttr)} after first alert)` : 'Never', key: m => t(m.containedAt) ?? Infinity },
   { label: 'Root cause found', show: m => m.rootCauseAt != null ? fmtTime(m.rootCauseAt) : 'Never', key: m => t(m.rootCauseAt) ?? Infinity },
-  { label: 'Fraudulent payment request sent', show: m => m.objectiveReached ? 'Yes' : 'No', key: m => (m.objectiveReached ? 1 : 0) },
-  { label: 'Compromised users', show: m => `${m.compromised.length} (${m.compromised.join(', ')})`, key: m => m.compromised.length },
-  { label: 'Attacker time in mailbox', show: m => fmtDuration(m.attackerAccessMin), key: m => m.attackerAccessMin },
+  { label: L => L.objectiveShort, show: m => m.objectiveReached ? 'Yes' : 'No', key: m => (m.objectiveReached ? 1 : 0) },
+  { label: L => L.compromisedLabel, show: m => `${m.compromised.length} (${m.compromised.join(', ')})${m.uncontained.length ? `. Still active: ${m.uncontained.join(', ')}` : ''}`, key: m => m.compromised.length * 10 + m.uncontained.length },
+  { label: L => `${L.accessLabel} (time)`, show: m => fmtDuration(m.attackerAccessMin), key: m => m.attackerAccessMin },
   { label: 'Analyst hands-on time', show: m => `${Math.round(m.analystMin)} min`, key: m => m.analystMin },
   { label: 'Real-time detection coverage', show: m => `${m.coverage.covered} of ${m.coverage.total} rules`, key: m => -(m.coverage.covered / Math.max(1, m.coverage.total)) },
   { label: 'Monthly data cost', show: m => usd(m.cost.total), key: m => Math.round(m.cost.total) },
@@ -39,7 +40,9 @@ function takeaways(A, B, extraA, extraB) {
     const lateX = late === A ? extraA : extraB;
     const diff = late.metrics.firstAlertAt != null ? fmtDuration(late.metrics.firstAlertAt - early.metrics.firstAlertAt) + ' earlier' : 'and the other side never did';
     let why = '';
-    if (lateX?.blind) why = ` The other side's ${lateX.blind.rule} rule couldn't see the DNS/proxy logs in real time.`;
+    if (lateX?.blind) why = lateX.blind.dropped
+      ? ` The other side doesn't collect ${lateX.blind.sources} logs at all, to stay within its SIEM budget.`
+      : ` The other side's "${lateX.blind.ruleName}" rule couldn't see the ${lateX.blind.sources} logs in real time.`;
     out.push(`${name(early)} raised its first alert ${diff}.${why}`);
     if (early.config.routing && !late.config.routing && early.config.arch !== 'index') {
       out.push('Detection-aware routing, not the operating model, is what moved the first alert earlier.');
@@ -57,11 +60,15 @@ function takeaways(A, B, extraA, extraB) {
   }
 
   if (a.objectiveReached !== b.objectiveReached) {
-    out.push(`On ${name(a.objectiveReached ? A : B)}, the attacker sent the fraudulent payment request before containment. On ${name(a.objectiveReached ? B : A)}, they didn't.`);
+    out.push(`On ${name(a.objectiveReached ? A : B)}, the attacker reached their goal (${A.labels.objectiveStatus}) before containment. On ${name(a.objectiveReached ? B : A)}, they didn't.`);
   }
   if (a.compromised.length !== b.compromised.length) {
     const [more] = a.compromised.length > b.compromised.length ? [A] : [B];
-    out.push(`${name(more)} lost a second account: the phishing link was still live when another employee clicked it.`);
+    out.push(`${name(more)} ended up with more ${A.labels.compromisedLabel.toLowerCase()}: ${A.labels.secondVictim}.`);
+  }
+  if (a.uncontained.length !== b.uncontained.length) {
+    const [worse] = a.uncontained.length > b.uncontained.length ? [A] : [B];
+    out.push(`${name(worse)} never found ${worse.metrics.uncontained.join(', ')}, so the attacker still has a foothold.`);
   }
 
   // Effort and cost
@@ -74,7 +81,8 @@ function takeaways(A, B, extraA, extraB) {
   if (Math.abs(ct[0] - ct[1]) / Math.max(ct[0], ct[1]) > 0.05) {
     const [cheap, dear] = ct[0] < ct[1] ? [A, B] : [B, A];
     const pct = Math.round(100 * (1 - cheap.metrics.cost.total / dear.metrics.cost.total));
-    out.push(`${name(cheap)} spends about ${usd(dear.metrics.cost.total - cheap.metrics.cost.total)} a month less on data (${pct}% less).`);
+    const cut = cheap.plan.dropped.map(id => SOURCES.find(x => x.id === id)?.name).join(' and ');
+    out.push(`${name(cheap)} spends about ${usd(dear.metrics.cost.total - cheap.metrics.cost.total)} a month less on data (${pct}% less)${cut ? `, but only because it stopped collecting ${cut} logs to fit its budget` : ''}.`);
   }
   return out;
 }
@@ -99,7 +107,7 @@ export function renderSummary(root, A, B, revealed, onReveal, extras) {
         h('thead', {}, h('tr', {}, h('th', {}, ''), h('th', {}, 'Side A: ', describe(A.config)), h('th', {}, 'Side B: ', describe(B.config)))),
         h('tbody', {}, ROWS.map(r => {
           const [ca, cb] = better(r);
-          return h('tr', {}, h('th', { scope: 'row' }, r.label), h('td', { class: `num ${ca}` }, r.show(A.metrics)), h('td', { class: `num ${cb}` }, r.show(B.metrics)));
+          return h('tr', {}, h('th', { scope: 'row' }, typeof r.label === 'function' ? r.label(A.labels) : r.label), h('td', { class: `num ${ca}` }, r.show(A.metrics)), h('td', { class: `num ${cb}` }, r.show(B.metrics)));
         })),
       ),
     ),

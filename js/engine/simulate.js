@@ -5,9 +5,12 @@
 // metrics. Attacker events can be prevented by earlier SOC actions, and SOC
 // actions depend on which alerts fired, so everything runs through a single
 // time-ordered queue.
+//
+// All scenario-specific wording comes from scenario.labels, so the same
+// engine runs a phishing case, a malware case, and so on.
 
 import { FIXED, SOURCES } from './assumptions.js';
-import { routeOf, isPromotable, monthlyCost } from './cost.js';
+import { planRoutes, isPromotable } from './cost.js';
 
 export const ARCH_LABELS = { index: 'Index-at-ingest', tiered: 'Tiered', lake: 'Federated / lake' };
 export const MODEL_LABELS = { traditional: 'Traditional', agentic: 'Agentic' };
@@ -44,6 +47,7 @@ export function simulate(scenario, variantId, config, params) {
   const variant = scenario.variants?.find(v => v.id === variantId) ?? scenario.variants?.[0] ?? {};
   const removed = new Set(variant.removeEvents ?? []);
   const L = { ...scenario.labels, ...variant.labels };
+  const plan = planRoutes(arch, routingOn, params);
 
   const start = parseTime(scenario.start);
   const end = parseTime(variant.end ?? scenario.end);
@@ -55,14 +59,15 @@ export function simulate(scenario, variantId, config, params) {
 
   // ---- data visibility -------------------------------------------------
   // 'hot' = real-time rules see it and searches are instant;
-  // 'promoted' = a copy reached hot via detection-aware routing.
+  // 'promoted' = a copy reached hot via detection-aware routing;
+  // 'cheap' | 'lake' = searchable later, slowly; 'dropped' = never collected.
   function visibility(ev) {
-    const route = routeOf(ev.source, arch);
-    if (route === 'hot') return 'hot';
+    const route = plan.routes[ev.source] ?? 'hot';
+    if (route === 'hot' || route === 'dropped') return route;
     if (routingOn && ev.promotable && isPromotable(ev.source)) return 'promoted';
-    return route; // 'cheap' | 'lake'
+    return route;
   }
-  const coldTier = arch === 'lake' ? 'lake' : 'cheap';
+  const realtime = v => v === 'hot' || v === 'promoted';
   const coldLatency = arch === 'lake' ? params.lakeQueryMin : params.cheapSearchMin;
   const coldCost = arch === 'lake' ? params.lakeQueryCost : params.cheapSearchCost;
   const coldName = arch === 'lake' ? 'the data lake' : 'cheap storage';
@@ -85,8 +90,8 @@ export function simulate(scenario, variantId, config, params) {
     firstAlertAt: null,
     case: null,
     alerts: [],
-    compromised: [],    // { name, at, revokedAt }
-    clickers: [],       // { name, at }
+    compromised: [],    // { name, at, revokedAt, primary }
+    contacts: [],       // { name, at } who touched the indicator (scope search results)
     objectiveAt: null,
     accessStartAt: null,
     caseClosedAt: null,
@@ -103,11 +108,22 @@ export function simulate(scenario, variantId, config, params) {
   function checkRequires(ev, t) {
     for (const r of ev.requires ?? []) {
       if (r === 'attackerAccess' && S.containedAt != null && S.containedAt <= t) {
-        return `Prevented: ${L.victim}'s sessions were revoked at ${fmtTime(S.containedAt)}.`;
+        return `Prevented: ${L.accessCut} at ${fmtTime(S.containedAt)}.`;
       }
-      if (r === 'lureReachable') {
-        if (S.purgedAt != null && S.purgedAt <= t) return `Didn't happen: the phishing email was purged from all inboxes at ${fmtTime(S.purgedAt)}.`;
-        if (S.blockedAt != null && S.blockedAt <= t) return `Blocked: ${L.domain} was blocked at ${fmtTime(S.blockedAt)}.`;
+      if (r === 'anyAccess' && S.compromised.length && S.compromised.every(c => c.revokedAt != null && c.revokedAt <= t)) {
+        return `Prevented: every compromised system had been contained by ${fmtTime(Math.max(...S.compromised.map(c => c.revokedAt)))}.`;
+      }
+      if (r.startsWith('access:')) {
+        const name = r.slice(7);
+        const c = S.compromised.find(x => x.name === name);
+        if (!c) return `Didn't happen: the attacker never got into ${name}.`;
+        if (c.revokedAt != null && c.revokedAt <= t) return `Prevented: ${name} was contained at ${fmtTime(c.revokedAt)}.`;
+      }
+      if (r === 'lureReachable' && S.purgedAt != null && S.purgedAt <= t) {
+        return `Didn't happen: ${L.lureGone} at ${fmtTime(S.purgedAt)}.`;
+      }
+      if ((r === 'lureReachable' || r === 'indicatorReachable') && S.blockedAt != null && S.blockedAt <= t) {
+        return `Blocked: ${L.indicatorBlocked} at ${fmtTime(S.blockedAt)}.`;
       }
     }
     return null;
@@ -125,14 +141,14 @@ export function simulate(scenario, variantId, config, params) {
       log(t, ev.lane ?? (ev.actor === 'attacker' ? 'attacker' : 'user'), ev.title, ev.summary, {
         eventId: ev.id, raw: ev.raw, source: ev.source, sourceName: sourceName(ev.source), storage: vis, benign: ev.benign,
       });
-      if (ev.compromises) S.compromised.push({ name: ev.compromises, at: t, revokedAt: null, primary: ev.compromises === L.victimFull });
-      if (ev.clicker) S.clickers.push({ name: ev.clicker, at: t });
-      if (ev.mailboxAccess && S.accessStartAt == null) S.accessStartAt = t;
+      if (ev.compromises) S.compromised.push({ name: ev.compromises, at: t, revokedAt: null, primary: ev.compromises === L.victimFull, withPrimary: !!ev.containedWithPrimary });
+      if (ev.contact) S.contacts.push({ name: ev.contact, at: t });
+      if ((ev.accessStart || ev.mailboxAccess) && S.accessStartAt == null) S.accessStartAt = t;
       if (ev.objective) {
         S.objectiveAt = t;
         log(t, 'outcome', 'Attacker reaches their goal', L.objectiveImpact, { bad: true });
       }
-      evaluateRules(t);
+      evaluateRules();
     });
   }
 
@@ -149,11 +165,15 @@ export function simulate(scenario, variantId, config, params) {
         continue;
       }
       const vis = rule.needs.map(id => visibility(byId[id]));
-      const blind = rule.needs.filter((id, i) => vis[i] !== 'hot' && vis[i] !== 'promoted');
+      const blind = rule.needs.filter((id, i) => !realtime(vis[i]));
       if (blind.length) {
         ruleState[rule.id] = 'blind';
+        const dropped = blind.some(id => visibility(byId[id]) === 'dropped');
         const srcs = [...new Set(blind.map(id => sourceName(byId[id].source)))].join(', ');
-        log(ready, 'detect', `${rule.id} can't fire`, `The "${rule.name}" rule needs ${srcs} logs in real time, but they went to ${coldName}, where real-time rules don't run.`, { missed: true, rule: rule.id, ruleName: rule.name, blindSpot: true });
+        const text = dropped
+          ? `The "${rule.name}" rule needs ${srcs} logs, but they aren't collected at all. They were cut to stay within the SIEM budget.`
+          : `The "${rule.name}" rule needs ${srcs} logs in real time, but they went to ${coldName}, where real-time rules don't run.`;
+        log(ready, 'detect', `${rule.id} can't fire`, text, { missed: true, rule: rule.id, ruleName: rule.name, blindSpot: true, dropped, sources: srcs });
         continue;
       }
       ruleState[rule.id] = 'fired';
@@ -166,56 +186,59 @@ export function simulate(scenario, variantId, config, params) {
     const alert = { t, rule, promoted, fromHunt };
     S.alerts.push(alert);
     if (S.firstAlertAt == null) S.firstAlertAt = t;
-    if (rule.rootCause && S.rootCauseAt == null) {
-      S.rootCauseAt = t;
-    }
+    if (rule.rootCause && S.rootCauseAt == null) S.rootCauseAt = t;
     const sev = rule.severity === 'high' ? 'High' : 'Medium';
     log(t, 'detect', `Alert: ${rule.name}`, rule.logic, {
-      severity: rule.severity, rule: rule.id, badges: [sev, ...(promoted ? ['Promoted by routing'] : []), ...(fromHunt ? ['Hunting agent'] : [])],
+      severity: rule.severity, rule: rule.id, ruleName: rule.name,
+      badges: [sev, ...(promoted ? ['Promoted by routing'] : []), ...(fromHunt ? ['Hunting agent'] : [])],
     });
     if (model === 'agentic') agentOnAlert(t, alert); else humanOnAlert(t, alert);
   }
 
   // ---- shared helpers --------------------------------------------------
-  function rootCauseIsHot() {
-    if (!rootEvent || S.happened[rootEvent.id] == null) return false;
-    const v = visibility(rootEvent);
-    return v === 'hot' || v === 'promoted';
-  }
+  const rootVis = () => (rootEvent && S.happened[rootEvent.id] != null ? visibility(rootEvent) : null);
+  const rootCauseIsHot = () => realtime(rootVis());
+  const rootDropped = () => rootVis() === 'dropped';
+  const rootSourceName = () => (rootEvent ? sourceName(rootEvent.source) : 'the relevant');
 
   function contain(t, who) {
     if (S.containedAt != null) return;
     S.containedAt = t;
-    const primary = S.compromised.find(c => c.primary);
-    if (primary) primary.revokedAt = t;
-    log(t, 'outcome', 'Contained', `${L.victim}'s sessions revoked, password reset, any attacker inbox rules removed (${who}).`, { good: true });
+    // Containment covers the primary victim plus anything the hot evidence
+    // already ties to it (e.g. a server reached with its stolen credentials).
+    for (const c of S.compromised) if ((c.primary || c.withPrimary) && c.revokedAt == null) c.revokedAt = t;
+    log(t, 'outcome', 'Contained', `${L.containDone} (${who}).`, { good: true });
   }
 
   function blockAndPurge(t, who) {
     if (S.blockedAt == null) S.blockedAt = t;
     if (S.purgedAt == null) S.purgedAt = t;
-    log(t, 'outcome', 'Phishing domain blocked, emails purged', `${L.domain} blocked at DNS/proxy; the lure removed from all ${L.recipients} inboxes (${who}).`, { good: true });
+    log(t, 'outcome', L.blockTitle, `${L.blockDone} (${who}).`, { good: true });
   }
 
   function revokeOthers(t, list, who) {
     for (const c of list) c.revokedAt = t;
-    log(t, 'outcome', `Revoked: ${list.map(c => c.name).join(', ')}`, `Additional compromised account(s) contained (${who}).`, { good: true });
+    log(t, 'outcome', `Contained: ${list.map(c => c.name).join(', ')}`, `${L.revokeDone} (${who}).`, { good: true });
   }
 
-  // Search for everyone who visited the phishing domain. Hot = instant.
-  function clickerSearch(t, lane, actor, onDone) {
+  // Search for everything else that touched the indicator. Hot = instant.
+  function scopeSearch(t, lane, actor, onDone) {
+    if (rootDropped()) {
+      log(t, lane, `${actor} can't check for ${L.scopeSearch}`, `That would need ${rootSourceName()} logs, which were never collected.`, { bad: true });
+      return at(t, 0, tt => onDone(tt, []));
+    }
     const hot = rootCauseIsHot();
     const done = hot ? t : t + coldLatency;
     if (!hot) {
-      spend.push({ t, usd: coldCost, what: 'clicker search' });
-      log(t, lane, `${actor} searches ${coldName} for other visitors to the domain`, `Query started. Expected ${fmtDuration(coldLatency)}, about $${coldCost.toFixed(2)}.`, { query: true });
+      spend.push({ t, usd: coldCost, what: 'scope search' });
+      log(t, lane, `${actor} searches ${coldName} for ${L.scopeSearch}`, `Query started. Expected ${fmtDuration(coldLatency)}, about $${coldCost.toFixed(2)}.`, { query: true });
     }
     at(done, 0, tt => {
-      const visitors = S.clickers.filter(c => c.at <= t);
+      const found = S.contacts.filter(c => c.at <= t);
       const others = S.compromised.filter(c => !c.primary && c.at <= t && c.revokedAt == null);
-      const names = visitors.map(v => v.name).join(', ') || 'none';
-      const lostCreds = others.length ? `Credentials stolen: ${others.map(o => o.name).join(', ')}.` : 'No one else entered credentials.';
-      log(tt, lane, 'Other visitors identified', `Visited the domain: ${names}. ${lostCreds}`);
+      const names = found.map(v => v.name).join(', ') || 'none';
+      const lost = others.length ? `${L.scopeLost}: ${others.map(o => o.name).join(', ')}.` : L.scopeNoneLost;
+      log(tt, lane, L.scopeTitle, `${L.scopeFound}: ${names}. ${lost}`);
       onDone(tt, others);
     });
   }
@@ -254,7 +277,7 @@ export function simulate(scenario, variantId, config, params) {
   function humanInvestigate(t) {
     const clear = S.case.alerts.some(a => a.rule.confidence === 'clear') || S.alerts.some(a => a.rule.confidence === 'clear' && a.t <= t);
     if (clear) {
-      log(t, 'human', 'Tier-2 investigates by hand', `Pivots across the identity provider, mailbox audit, and ${rootCauseIsHot() ? 'proxy logs' : 'other hot data'}, one console at a time.`, { who: 'Tier-2', phase: 'investigating' });
+      log(t, 'human', 'Tier-2 investigates by hand', L.humanPivot, { who: 'Tier-2', phase: 'investigating' });
       const done = t + params.t2Clear;
       addWork(done, params.t2Clear, 'Tier-2');
       at(done, 0, humanContain);
@@ -263,9 +286,9 @@ export function simulate(scenario, variantId, config, params) {
       const asked = t + params.t2Unclear;
       addWork(asked, params.t2Unclear, 'Tier-2');
       at(asked, 0, tt => {
-        log(tt, 'human', `Tier-2 asks ${L.victim} to confirm`, `Waiting for a reply (${fmtDuration(params.userConfirmWait)}).`, { who: 'Tier-2', phase: 'waiting-user' });
+        log(tt, 'human', L.confirmAsk, `Waiting for a reply (${fmtDuration(params.userConfirmWait)}).`, { who: 'Tier-2', phase: 'waiting-user' });
         at(tt + params.userConfirmWait, 0, t3 => {
-          log(t3, 'user', `${L.victim} replies: "That wasn't me"`, 'Tier-2 now has enough to act.');
+          log(t3, 'user', L.confirmReply, 'Tier-2 now has enough to act.');
           humanContain(t3);
         });
       });
@@ -275,9 +298,9 @@ export function simulate(scenario, variantId, config, params) {
   function humanContain(t) {
     if (S.rootCauseAt == null && rootCauseIsHot()) {
       S.rootCauseAt = t;
-      log(t, 'human', 'Tier-2 finds the root cause', `${L.rootCause} found in the proxy logs.`, { who: 'Tier-2' });
+      log(t, 'human', 'Tier-2 finds the root cause', `${L.rootCause}.`, { who: 'Tier-2' });
     }
-    log(t, 'human', 'Tier-2 runs the containment playbook', 'SOAR revokes sessions, resets the password, and removes inbox rules.', { who: 'Tier-2', phase: 'containing' });
+    log(t, 'human', 'Tier-2 runs the containment playbook', L.playbook, { who: 'Tier-2', phase: 'containing' });
     addWork(t + FIXED.playbookRun, FIXED.playbookHandsOn, 'Tier-2');
     at(t + FIXED.playbookRun, 0, tt => {
       contain(tt, 'SOAR playbook');
@@ -287,15 +310,19 @@ export function simulate(scenario, variantId, config, params) {
 
   function humanRootCause(t) {
     if (S.rootCauseAt != null) return humanScope(Math.max(t, S.rootCauseAt));
+    if (rootDropped()) {
+      log(t, 'human', 'Root cause never found', `The ${rootSourceName()} logs that would show how this started were never collected. ${L.rootMissingNote}`, { who: 'Tier-2', bad: true });
+      return humanWriteUp(t);
+    }
     if (!params.humanChecksCold) {
-      log(t, 'human', 'Root cause never found', `The evidence is in ${coldName}, and nobody thought to search it. The other targets of the phishing email stay exposed.`, { who: 'Tier-2', bad: true });
+      log(t, 'human', 'Root cause never found', `The evidence is in ${coldName}, and nobody thought to search it. ${L.rootMissingNote}`, { who: 'Tier-2', bad: true });
       return humanWriteUp(t);
     }
     const startQ = t + params.coldDecision;
     addWork(startQ, params.coldDecision, 'Tier-2');
     at(startQ, 0, tt => {
       spend.push({ t: tt, usd: coldCost, what: 'root-cause search' });
-      log(tt, 'human', `Tier-2 searches ${coldName}`, `Hot data doesn't show how the credentials were stolen. Started a search of ${L.victim}'s web activity: ${fmtDuration(coldLatency)}, about $${coldCost.toFixed(2)}.`, { who: 'Tier-2', query: true });
+      log(tt, 'human', `Tier-2 searches ${coldName}`, `Hot data doesn't show how this started. Started a search of ${L.rootSearch}: ${fmtDuration(coldLatency)}, about $${coldCost.toFixed(2)}.`, { who: 'Tier-2', query: true });
       at(tt + coldLatency, 0, t3 => {
         S.rootCauseAt = t3;
         log(t3, 'human', 'Root cause found', `${L.rootCause}.`, { who: 'Tier-2' });
@@ -309,7 +336,7 @@ export function simulate(scenario, variantId, config, params) {
     addWork(done, params.scoping, 'Tier-2');
     at(done, 0, tt => {
       blockAndPurge(tt, 'Tier-2');
-      clickerSearch(tt, 'human', 'Tier-2', (t3, others) => {
+      scopeSearch(tt, 'human', 'Tier-2', (t3, others) => {
         if (others.length) {
           addWork(t3 + FIXED.playbookHandsOn, FIXED.playbookHandsOn, 'Tier-2');
           revokeOthers(t3 + FIXED.playbookRun, others, 'SOAR playbook');
@@ -343,17 +370,19 @@ export function simulate(scenario, variantId, config, params) {
   function agentOnAlert(t, alert) {
     if (S.case) {
       S.case.alerts.push(alert);
-      log(t, 'agent', `Agent links ${alert.rule.id} to the open case`, 'Same user, same session. No new ticket, no duplicate human work.');
+      log(t, 'agent', `Agent links ${alert.rule.id} to the open case`, `${L.linkedNote} No new ticket, no duplicate human work.`);
       return;
     }
     S.case = { openedAt: t, alerts: [alert] };
     const triaged = t + params.agentTriage;
     at(triaged, 0, tt => {
       log(tt, 'agent', 'Agent triages immediately', alert.rule.agentTriageNote ?? 'No queue: every alert is triaged on arrival.', { phase: 'triage' });
-      // Kick off the cold search in parallel if the root cause isn't in hot data.
-      if (S.rootCauseAt == null && !rootCauseIsHot() && rootEvent && S.happened[rootEvent.id] != null) {
+      if (S.rootCauseAt == null && rootDropped()) {
+        log(tt, 'agent', `Agent looks for ${rootSourceName()} history`, `Not collected: those logs were cut to fit the SIEM budget. The agent can contain what it can see, but it can't confirm how this started or find other affected systems.`, { bad: true });
+      } else if (S.rootCauseAt == null && !rootCauseIsHot() && rootVis() != null) {
+        // Kick off the cold search in parallel; the agent doesn't wait for it.
         spend.push({ t: tt, usd: coldCost, what: 'root-cause search' });
-        log(tt, 'agent', `Agent searches ${coldName} in parallel`, `Looking for ${L.victim}'s web activity before the suspicious sign-in. ${fmtDuration(coldLatency)}, about $${coldCost.toFixed(2)} of the $50 budget. It doesn't wait for the result.`, { query: true });
+        log(tt, 'agent', `Agent searches ${coldName} in parallel`, `Looking for ${L.rootSearch}. ${fmtDuration(coldLatency)}, about $${coldCost.toFixed(2)} of the $50 budget. It doesn't wait for the result.`, { query: true });
         at(tt + coldLatency, 0, t3 => {
           if (S.rootCauseAt == null) {
             S.rootCauseAt = t3;
@@ -362,8 +391,7 @@ export function simulate(scenario, variantId, config, params) {
           }
         });
       }
-      const inv = tt + params.agentInvestigate;
-      at(inv, 0, agentPropose);
+      at(tt + params.agentInvestigate, 0, agentPropose);
     });
   }
 
@@ -372,26 +400,28 @@ export function simulate(scenario, variantId, config, params) {
     S.agentProposed = true;
     const full = S.rootCauseAt != null && S.rootCauseAt <= t;
     log(t, 'agent', 'Agent finishes the investigation', full
-      ? `Confirmed: ${L.attackSummary}. ${L.rootCause}; the same email went to ${L.recipients} people.`
-      : `Hot data is enough to act: ${L.hotEvidence}. Root cause still pending from ${coldName}.`);
+      ? `Confirmed: ${L.attackSummary}. ${L.rootCause}. ${L.fullFinding}`
+      : `Hot data is enough to act: ${L.hotEvidence}. ${rootDropped() ? 'Root cause unknown: the logs that would show it were never collected.' : `Root cause still pending from ${coldName}.`}`);
     if (full) {
-      clickerSearch(t, 'agent', 'Agent', (_tt, others) => { S.pendingOthers = others; });
-      approval(t, `revoke ${L.victim}'s sessions and reset password; block ${L.domain}; purge the email from all ${L.recipients} inboxes`, 'contain and block', tt => {
+      scopeSearch(t, 'agent', 'Agent', (_tt, others) => { S.pendingOthers = others; });
+      approval(t, L.fullPackage, 'contain and block', tt => {
         contain(tt, 'agent, approved');
         blockAndPurge(tt, 'agent, approved');
         agentFinishOthers(tt);
       });
     } else {
-      approval(t, `revoke ${L.victim}'s sessions, reset password, remove inbox rules`, 'interim containment', tt => contain(tt, 'agent, approved'));
+      approval(t, L.containPackage, 'interim containment', tt => {
+        contain(tt, 'agent, approved');
+        if (rootDropped()) agentReport(tt);
+      });
     }
   }
 
   function agentFollowUp(t) {
-    const tt = t + 2;
-    at(tt, 0, t2 => {
-      log(t2, 'agent', 'Agent pivots to email logs', `Same domain found in a message sent to ${L.recipients} people.`);
-      clickerSearch(t2, 'agent', 'Agent', (_t3, others) => { S.pendingOthers = others; });
-      approval(t2, `block ${L.domain}; purge the email from all ${L.recipients} inboxes`, 'block and purge', t4 => {
+    at(t + 2, 0, t2 => {
+      log(t2, 'agent', L.pivotTitle, L.pivotText);
+      scopeSearch(t2, 'agent', 'Agent', (_t3, others) => { S.pendingOthers = others; });
+      approval(t2, L.blockPackage, 'block', t4 => {
         blockAndPurge(t4, 'agent, approved');
         agentFinishOthers(t4);
       });
@@ -399,12 +429,12 @@ export function simulate(scenario, variantId, config, params) {
   }
 
   function agentFinishOthers(t) {
-    // Wait for the clicker search if it's still running.
+    // Wait for the scope search if it's still running.
     const check = tt => {
       if (S.pendingOthers === undefined) return at(tt + 1, 0, check);
       const others = S.pendingOthers.filter(o => o.revokedAt == null);
       if (others.length) {
-        approval(tt, `revoke sessions for ${others.map(o => o.name).join(', ')}`, 'contain other victims', t2 => {
+        approval(tt, `${L.revokeVerb} ${others.map(o => o.name).join(', ')}`, 'contain the rest', t2 => {
           revokeOthers(t2, others, 'agent, approved');
           agentReport(t2);
         });
@@ -416,8 +446,7 @@ export function simulate(scenario, variantId, config, params) {
   }
 
   function agentReport(t) {
-    const drafted = t + 5;
-    at(drafted, 0, tt => {
+    at(t + 5, 0, tt => {
       log(tt, 'agent', 'Agent drafts the case report', `Timeline, evidence, MITRE ATT&CK mapping (${L.mitre}).`);
       addWork(tt + params.reviewMinutes, params.reviewMinutes, 'Analyst');
       at(tt + params.reviewMinutes, 0, t2 => {
@@ -434,9 +463,9 @@ export function simulate(scenario, variantId, config, params) {
     if (ht <= end) {
       at(ht, 0, t => {
         const ev = byId[scenario.hunt.needs];
-        if (!ev || S.happened[ev.id] == null) return;
+        if (!ev || S.happened[ev.id] == null || visibility(ev) === 'dropped') return;
         if (S.case) {
-          log(t, 'agent', 'Hunting agent runs', 'Finds the same phishing domain. Already covered by the open case.');
+          log(t, 'agent', 'Hunting agent runs', `${L.huntSame} Already covered by the open case.`);
           return;
         }
         log(t, 'agent', 'Hunting agent runs its scheduled sweep', `${scenario.hunt.name}. This is the first time anything has looked at this data.`);
@@ -462,7 +491,7 @@ export function simulate(scenario, variantId, config, params) {
   // ---- metrics -------------------------------------------------------------
   const firstMal = parseTime(byId[scenario.firstMaliciousEvent]?.time ?? scenario.start);
   const realtimeRules = scenario.rules.filter(r => !r.suppressed && r.needs.every(id => byId[id]));
-  const covered = realtimeRules.filter(r => r.needs.every(id => ['hot', 'promoted'].includes(visibility(byId[id]))));
+  const covered = realtimeRules.filter(r => r.needs.every(id => realtime(visibility(byId[id]))));
   const accessEnd = S.containedAt ?? end;
   const metrics = {
     firstAlertAt: S.firstAlertAt,
@@ -472,6 +501,7 @@ export function simulate(scenario, variantId, config, params) {
     rootCauseAt: S.rootCauseAt,
     objectiveReached: S.objectiveAt != null,
     compromised: S.compromised.map(c => c.name),
+    uncontained: S.compromised.filter(c => c.revokedAt == null).map(c => c.name),
     attackerAccessMin: S.accessStartAt != null ? Math.max(0, accessEnd - S.accessStartAt) : 0,
     accessStartAt: S.accessStartAt,
     compromisedDetail: S.compromised.map(c => ({ name: c.name, at: c.at, revokedAt: c.revokedAt })),
@@ -480,9 +510,9 @@ export function simulate(scenario, variantId, config, params) {
     analystMin: work.reduce((s, w) => s + w.min, 0),
     queryCost: spend.reduce((s, x) => s + x.usd, 0),
     coverage: { covered: covered.length, total: realtimeRules.length },
-    cost: monthlyCost(arch, routingOn, params),
+    cost: plan.cost,
     caseClosedAt: S.caseClosedAt,
   };
 
-  return { config: { arch, model, routing: routingOn }, start, end, timeline, work, spend, metrics };
+  return { config: { arch, model, routing: routingOn }, plan, labels: L, start, end, timeline, work, spend, metrics };
 }

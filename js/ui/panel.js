@@ -1,11 +1,12 @@
 // One side of the split screen: configuration, live counters, and timeline.
 import { h, usd } from './dom.js';
 import { fmtTime, fmtDuration, ARCH_LABELS, MODEL_LABELS } from '../engine/simulate.js';
+import { createDiagram } from './diagram.js';
 
 const LANE_WHO = {
   attacker: 'Attacker', user: 'Employee', detect: 'Detection', agent: 'AI agent', human: 'Analyst', outcome: 'Outcome',
 };
-const STORAGE_LABEL = { hot: 'hot tier', promoted: 'promoted to hot', cheap: 'cheap storage', lake: 'data lake' };
+const STORAGE_LABEL = { hot: 'hot tier', promoted: 'promoted to hot', cheap: 'cheap storage', lake: 'data lake', dropped: 'not collected' };
 
 function segmented(options, onPick, label) {
   const buttons = {};
@@ -17,7 +18,7 @@ function segmented(options, onPick, label) {
   };
 }
 
-export function createPanel(root, name, { onConfig, onInfo }) {
+export function createPanel(root, name, { onConfig, onInfo, onPipeline }) {
   let config;
   let result;
   let items = [];
@@ -40,6 +41,9 @@ export function createPanel(root, name, { onConfig, onInfo }) {
   const status = h('div', { class: 'status idle', role: 'status' });
   const callouts = h('div', { class: 'cfg' });
   const counters = h('div', { class: 'counters' });
+  const archBody = h('div');
+  const archBox = h('details', { class: 'arch-wrap', open: true }, h('summary', {}, 'Architecture'), archBody);
+  const diagram = createDiagram(archBody, { onPipeline: () => onPipeline(name) });
   const list = h('ol', { class: 'timeline', 'aria-label': `Side ${name} timeline` });
 
   root.append(
@@ -49,6 +53,7 @@ export function createPanel(root, name, { onConfig, onInfo }) {
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Operating model'), model.el),
       routingBox,
     ),
+    archBox,
     counters,
     status,
     callouts,
@@ -104,15 +109,18 @@ export function createPanel(root, name, { onConfig, onInfo }) {
       tag.textContent = `${ARCH_LABELS[cfg.arch]} · ${MODEL_LABELS[cfg.model]}${cfg.routing && !disabled ? ' · routing on' : ''}`;
     },
 
-    setResult(res, extra) {
+    setResult(res, extra, params) {
       result = res;
       this.extra = extra;
+      diagram.setResult(res, params);
       renderTimeline();
     },
 
     update(clock) {
       if (!result) return;
+      diagram.update(clock);
       const m = result.metrics;
+      const L = result.labels;
 
       // Timeline reveal.
       let shown = -1;
@@ -139,11 +147,11 @@ export function createPanel(root, name, { onConfig, onInfo }) {
       const spend = result.spend.filter(s => s.t <= clock).reduce((a, s) => a + s.usd, 0);
 
       counters.replaceChildren(
-        counter('First alert', alertSeen ? fmtTime(m.firstAlertAt) : '—', alertSeen ? `${fmtDuration(m.mttd)} after the phishing email` : 'nothing yet'),
+        counter('First alert', alertSeen ? fmtTime(m.firstAlertAt) : '—', alertSeen ? `${fmtDuration(m.mttd)} after the attack began` : 'nothing yet'),
         counter('Contained', containedSeen ? fmtTime(m.containedAt) : '—', containedSeen ? `${fmtDuration(m.mttr)} after first alert` : alertSeen ? 'not yet' : '', containedSeen ? (goalSeen ? 'bad' : 'good') : null),
         counter('Analyst hands-on', `${Math.round(humanMin)} min`, 'human time spent'),
-        counter('Attacker in mailbox', fmtDuration(accessMin), m.accessStartAt == null ? 'never got in' : '', accessMin > 0 ? 'bad' : null),
-        counter('Compromised users', String(victims), goalSeen ? 'fraud request sent' : '', victims > 1 || goalSeen ? 'bad' : null),
+        counter(L.accessLabel, fmtDuration(accessMin), m.accessStartAt == null ? L.accessNever : '', accessMin > 0 ? 'bad' : null),
+        counter(L.compromisedLabel, String(victims), goalSeen ? L.objectiveStatus : '', victims > 1 || goalSeen ? 'bad' : null),
         counter('Data cost / month', usd(m.cost.total), spend ? `+ ${usd(spend)} cold-data queries` : `coverage ${m.coverage.covered}/${m.coverage.total} rules`),
       );
 
@@ -152,10 +160,10 @@ export function createPanel(root, name, { onConfig, onInfo }) {
       let text = 'A normal morning.';
       if (clock >= m.firstMaliciousAt) { tone = 'active'; text = 'Attack under way. Not detected yet.'; }
       if (alertSeen) { tone = 'active'; text = 'Alert raised. Not contained yet.'; }
-      if (goalSeen && !containedSeen) { tone = 'bad'; text = 'The attacker reached their goal: fraudulent payment request sent.'; }
+      if (goalSeen && !containedSeen) { tone = 'bad'; text = `The attacker reached their goal: ${L.objectiveStatus}.`; }
       if (containedSeen) {
         tone = goalSeen ? 'bad' : 'good';
-        text = goalSeen ? `Contained at ${fmtTime(m.containedAt)}, after the fraudulent request went out.` : `Contained at ${fmtTime(m.containedAt)}, before the attacker reached their goal.`;
+        text = goalSeen ? `Contained at ${fmtTime(m.containedAt)}, after the attacker reached their goal (${L.objectiveStatus}).` : `Contained at ${fmtTime(m.containedAt)}, before the attacker reached their goal.`;
       }
       if (clock >= result.end && m.firstAlertAt == null) { tone = 'bad'; text = 'Nothing was ever detected.'; }
       status.className = `status ${tone}`;
