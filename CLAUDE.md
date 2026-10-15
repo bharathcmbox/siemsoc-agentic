@@ -14,13 +14,14 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
   - **Where they appear:** cards under the race, plus caption links at the moments they explain.
   - **Inside the agent:** the AI team's steps as one agent or a team of specialists.
   - **Inside the pipeline:** one log line through parse, normalize, enrich, reduce and route.
+- **What AI agents can get wrong:** a "Before you trust an AI agent" band on the home screen, a Risks screen (`#risks`, or `#risks/<group>` to jump to a group), and the prompt-injection deep dive (`#risks/injection`). All wording comes from `docs/ai-risks.md`.
 - **Analyst view (behind a switch):** side-by-side configuration, timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
 
 ## Layout
 
-- `index.html`: the single-page app, with three screens: home (story picker), exec (race view), analyst (detailed view)
+- `index.html`: the single-page app, with four screens: home (story picker), exec (race view), analyst (detailed view), risks (what AI agents can get wrong)
 - `css/theme.css`: palette tokens for both themes (dark default), the bundled font, page basics
-- `css/exec.css`, `css/analyst.css`: styles for each view
+- `css/exec.css`, `css/analyst.css`, `css/risks.css`: styles for each view
 - `js/main.js`: app controller, with shared state, playback, presets, view switch, theme toggle, and the URL hash
 - `js/stories.js`: the six executive stories, their comparisons, and plain-language team names (`title`, `sub`, `ref`). When a story has more than one comparison, each needs a `chapter` (a short question) and a `teaser` (one line); the race view shows them as numbered "ways to watch this story" cards
 - `js/engine/simulate.js`: discrete-event simulation of one SOC configuration against a scenario
@@ -29,6 +30,7 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 - `js/ui/`:
   - `exec.js`: home, race view, "ways to watch" cards, explore cards, caption links, scoreboard, verdict, glossary
   - `narrator.js`: comparative "beats" built from both results. A beat can carry `links` (`{ kind: 'agent' | 'pipeline', side, label }`), which the race view shows as caption links
+  - `risks.js`: the home band, the Risks screen and the injection deep dive, with their wording. Keep it in step with `docs/ai-risks.md`
   - `agent-view.js`: "Inside the agent", showing one agent or a team of specialists
   - `panel.js`, `diagram.js`, `pipeline.js`, `summary.js`, `params.js`, `routing-info.js`: analyst view pieces
 - `scenarios/*.json`: scenario data
@@ -39,6 +41,7 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 - `docs/`:
   - `primer.md`: concepts
   - `assumptions.md`: every number; §9 lists sources
+  - `ai-risks.md`: the source for all wording about AI risks and guardrails, with sources
   - `scenarios/*.md`: one per scenario, with results tables
 - `tests/` (dev only, needs Node):
   - `node tests/run-all.mjs`: metrics for every scenario × configuration

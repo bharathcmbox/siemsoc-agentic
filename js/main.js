@@ -14,6 +14,7 @@ import { buildBeats, createNarrator, clock12 } from './ui/narrator.js';
 import { openPipeline } from './ui/pipeline.js';
 import { openAgentView } from './ui/agent-view.js';
 import { renderHome, renderRace, icon } from './ui/exec.js';
+import { renderRisks } from './ui/risks.js';
 import { STORIES, findStory, storyFor, laneNames } from './stories.js';
 
 const cfg = (arch, model, routing = false) => ({ arch, model, routing });
@@ -30,7 +31,7 @@ const PARAM_DEFAULTS = defaultParams();
 
 const $ = id => document.getElementById(id);
 const state = {
-  screen: 'home', view: 'exec',
+  screen: 'home', view: 'exec', riskTopic: null,
   index: [], scenarios: {}, scenario: null, variant: 'default',
   sides: [cfg('index', 'traditional'), cfg('index', 'agentic')],
   results: [null, null], extras: [null, null], beats: [], names: null,
@@ -43,6 +44,7 @@ let race = null;
 // ---------- URL hash (shareable links) ----------
 // Executive links: #story=phishing&cmp=team. Anything else, or the analyst
 // view: #s=<scenario>&v=<variant>&a=<side>&b=<side>[&view=analyst].
+// The risks screens: #risks, #risks/<group id>, #risks/injection.
 const encodeSide = c => `${c.arch}-${c.model}-${c.routing ? 1 : 0}`;
 function decodeSide(s) {
   const [arch, model, r] = (s ?? '').split('-');
@@ -51,6 +53,7 @@ function decodeSide(s) {
 }
 function writeHash() {
   if (state.screen === 'home') { history.replaceState(null, '', location.pathname); return; }
+  if (state.screen === 'risks') { history.replaceState(null, '', `#risks${state.riskTopic ? `/${state.riskTopic}` : ''}`); return; }
   const hit = findStory(state.scenario.id, state.variant, state.sides);
   const q = hit && state.view === 'exec'
     ? new URLSearchParams({ story: hit.story.id, cmp: hit.comparison.id })
@@ -58,7 +61,9 @@ function writeHash() {
   history.replaceState(null, '', `#${q}`);
 }
 function readHash() {
-  const q = new URLSearchParams(location.hash.slice(1));
+  const raw = location.hash.slice(1);
+  if (raw === 'risks' || raw.startsWith('risks/')) return { risks: raw.slice(6) || null };
+  const q = new URLSearchParams(raw);
   return { story: q.get('story'), cmp: q.get('cmp'), s: q.get('s'), v: q.get('v'), a: decodeSide(q.get('a')), b: decodeSide(q.get('b')), view: q.get('view') };
 }
 
@@ -190,7 +195,8 @@ function syncPresetSelect() {
 
 function showScreen() {
   const story = state.screen === 'story';
-  $('home').hidden = story;
+  $('home').hidden = state.screen !== 'home';
+  $('risks').hidden = state.screen !== 'risks';
   $('exec').hidden = !story || state.view !== 'exec';
   $('analyst').hidden = !story || state.view !== 'analyst';
   $('view-switch').hidden = !story;
@@ -307,12 +313,25 @@ async function openStory(storyId, cmpId) {
 }
 
 function goHome() {
-  pause();
+  if (state.playing) pause();
   state.screen = 'home';
   race = null;
   showScreen();
   writeHash();
   window.scrollTo(0, 0);
+}
+
+// topic: null (all risks), a group id (scrolls to it), or 'injection' (the deep dive).
+function openRisks(topic = null) {
+  if (state.playing) pause();
+  state.screen = 'risks';
+  state.riskTopic = topic;
+  race = null;
+  renderRisks($('risks'), { topic, onBack: goHome, onOpen: openRisks });
+  showScreen();
+  writeHash();
+  const target = topic && topic !== 'injection' && document.getElementById(`r-${topic}`);
+  if (target) target.scrollIntoView({ block: 'start' }); else window.scrollTo(0, 0);
 }
 
 function setView(view) {
@@ -342,7 +361,7 @@ async function init() {
     renderThemeButton();
   });
   $('view-switch').addEventListener('click', () => setView(state.view === 'exec' ? 'analyst' : 'exec'));
-  renderHome($('home'), { onStory: id => openStory(id) });
+  renderHome($('home'), { onStory: id => openStory(id), onRisks: openRisks });
 
   state.index = await loadJson('scenarios/index.json');
   $('scenario').replaceChildren(...state.index.map(s => h('option', { value: s.id }, s.short)));
@@ -374,6 +393,7 @@ async function init() {
   });
 
   const hs = readHash();
+  if ('risks' in hs) return openRisks(hs.risks);
   if (hs.story) return openStory(hs.story, hs.cmp);
   if (hs.s && state.index.some(s => s.id === hs.s)) {
     state.screen = 'story';

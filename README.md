@@ -24,6 +24,13 @@ Every story also has two deeper views, shown as cards under the race and linked 
 5. [Ransomware at 2 a.m.: who is awake?](https://bharathcmbox.github.io/siemsoc-agentic/#story=ransomware)
 6. [Same budget, smarter design?](https://bharathcmbox.github.io/siemsoc-agentic/#story=budget)
 
+### What AI agents can get wrong
+
+A neutral guide to the risks of AI agents in a security team, and the guardrails that catch them: bad judgment, misaligned goals, too much power, runaway resources, and manipulation.
+
+- [What AI agents can get wrong](https://bharathcmbox.github.io/siemsoc-agentic/#risks)
+- [When the logs talk back](https://bharathcmbox.github.io/siemsoc-agentic/#risks/injection): how attackers can trick an AI agent through the logs it reads, and what stops it
+
 ### Analyst view
 
 The **Analyst view** switch opens the detailed comparison, where you set each side yourself:
@@ -47,6 +54,7 @@ To run it on your own machine, run `python3 -m http.server` in this folder and o
 - [Plan](docs/PLAN.md)
 - [Primer: from traditional SOC to agentic SOC](docs/primer.md)
 - [Metrics and cost assumptions](docs/assumptions.md)
+- [What AI agents can get wrong](docs/ai-risks.md)
 - Scenario write-ups:
   1. [Phishing to BEC](docs/scenarios/01-phishing-to-bec.md)
   2. [Where did the evidence go?](docs/scenarios/02-where-did-the-evidence-go.md) (includes the quiet-attacker variant)
