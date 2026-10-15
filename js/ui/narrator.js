@@ -57,7 +57,9 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   const R = [A, B];
   const N = names;
   const raw = [];
-  const add = (t, text) => raw.push({ t, text });
+  // link: optional pointer to a deeper view, { kind: 'agent' | 'pipeline', side: 0 | 1 }.
+  const add = (t, text, link) => raw.push({ t, text, link });
+  const LOGS = side => ({ kind: 'pipeline', side, label: 'See where these logs went' });
   const other = i => R[1 - i];
   const sameData = A.config.arch === B.config.arch && A.config.routing === B.config.routing;
 
@@ -89,11 +91,11 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
     const o = other(i);
     const oBlind = o.timeline.find(e => e.blindSpot && e.rule === b.rule);
     if (oBlind && oBlind.dropped === b.dropped) {
-      if (i === 0) add(b.t, `On both sides, ${b.rulePlain} can't work: ${why(b)}.${b.dropped ? '' : ' The best early clue is being kept, but nobody is watching it.'}`);
+      if (i === 0) add(b.t, `On both sides, ${b.rulePlain} can't work: ${why(b)}.${b.dropped ? '' : ' The best early clue is being kept, but nobody is watching it.'}`, LOGS(0));
       return;
     }
     const otherFires = o.metrics.firstAlertAt != null && o.metrics.firstAlertAt <= b.t + 1;
-    add(b.t, `For ${N[i]}, ${b.rulePlain} can't work: ${why(b)}.${otherFires ? ` ${N[1 - i]} sends those logs to real-time detection, so its check works.` : ''}`);
+    add(b.t, `For ${N[i]}, ${b.rulePlain} can't work: ${why(b)}.${otherFires ? ` ${N[1 - i]} sends those logs to real-time detection, so its check works.` : ''}`, LOGS(i));
   });
 
   // 3. First alerts.
@@ -103,12 +105,14 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
     : (e.badges ?? []).includes('Promoted by routing') ? ' It worked because smart routing sent a copy of the suspicious event to real-time detection.' : '');
   if (fa[0] != null && fa[0] === fa[1]) {
     const e = alertEntry(A);
-    add(fa[0], `Both teams get the same alert at the same moment, from ${e.rulePlain}.${how(e)}${sameData ? ' Same data, same checks, same timing.' : ''} What each team does next is where they differ.`);
+    add(fa[0], `Both teams get the same alert at the same moment, from ${e.rulePlain}.${how(e)}${sameData ? ' Same data, same checks, same timing.' : ''} What each team does next is where they differ.`,
+      (e.badges ?? []).includes('Promoted by routing') ? { kind: 'pipeline', side: 0, label: 'See how smart routing works' } : undefined);
   } else {
     R.forEach((r, i) => {
       if (fa[i] == null) return;
       const e = alertEntry(r);
-      add(fa[i], `${N[i]} gets its first alert, from ${e.rulePlain}.${how(e)} ${N[1 - i]}: ${statusAt(other(i), fa[i])}.`);
+      add(fa[i], `${N[i]} gets its first alert, from ${e.rulePlain}.${how(e)} ${N[1 - i]}: ${statusAt(other(i), fa[i])}.`,
+        (e.badges ?? []).includes('Promoted by routing') ? { kind: 'pipeline', side: i, label: 'See how smart routing works' } : undefined);
     });
   }
 
@@ -123,7 +127,7 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
       : e.rule && firstRule && e.rule !== firstRule
         ? `${N[i]}: an analyst finally opens the case, but only because ${e.rulePlain} fired and jumped the queue. The original alert is still waiting.`
         : `${N[i]}: an analyst opens the alert after ${fmtDuration(wait)} waiting in the queue.`;
-    add(e.t, `${text} ${N[1 - i]}: ${statusAt(other(i), e.t)}.`);
+    add(e.t, `${text} ${N[1 - i]}: ${statusAt(other(i), e.t)}.`, r.config.model === 'agentic' ? { kind: 'agent', side: i, label: 'See how the agent works' } : undefined);
   });
 
   // 5. Decision to stop the attacker.
@@ -191,8 +195,8 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
     // Team references are lower-case noun phrases ("the AI-assisted team"); capitalize sentence starts.
     const text = to12(r.text).replace(/^[a-z]/, c => c.toUpperCase()).replace(/([.!?] )([a-z])/g, (_, p, c) => p + c.toUpperCase());
     const last = beats[beats.length - 1];
-    if (last && last.t === r.t) last.lines.push(text);
-    else beats.push({ t: r.t, lines: [text] });
+    if (last && last.t === r.t) { last.lines.push(text); if (r.link && !last.links.some(l => l.kind === r.link.kind)) last.links.push(r.link); }
+    else beats.push({ t: r.t, lines: [text], links: r.link ? [r.link] : [] });
   }
   return beats;
 }
