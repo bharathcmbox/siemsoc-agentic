@@ -10,10 +10,14 @@ The `Source` column says `Illustrative` unless a public source has been checked;
 
 | Parameter | Default | Range | Source |
 |---|---|---|---|
-| Employees | 5,000 | 500 – 50,000 | Illustrative |
-| SOC analysts on shift (business hours) | 4 | 1 – 20 | Illustrative |
-| SOC analysts on shift (off hours) | 1 | 0 – 10 | Illustrative |
-| Alerts per day reaching the queue | 800 | 100 – 10,000 | Illustrative |
+| Employees | 5,000 | 500 – 50,000 | Illustrative (context) |
+| Tier-1 analysts on shift, business hours | 4 | 1 – 20 | Illustrative; the "Tier-1 analysts on shift" setting |
+| Tier-1 analysts on shift, off hours | 1 | — | Derived: business-hours analysts ÷ off-hours multiplier (4 ÷ 4) |
+| Alerts per day that need a person | 150 | 50 – 300 | Illustrative (context); counts only what's left after automation closes known-harmless alerts |
+
+**Why these fit together.** At 10 minutes per alert, 4 analysts for 10 business hours and 1 analyst for the other 14 hours can work through about 320 alerts a day. With 150 a day, they're about half busy. At that level a queue never builds up for long, so a medium alert typically waits 20–90 minutes. That's why the normal-day queue waits in §4 are fixed values rather than computed.
+
+Above about 320 a day the queue would never empty and waits would grow without limit. That's what the alert-storm scenario shows over one morning: 400 extra alerts in two hours, where the engine switches to a first-in, first-out capacity model (§4).
 
 ## 2. Log volume by source (per day)
 
@@ -143,8 +147,8 @@ Latency is identical for humans and agents. The difference the simulator shows i
 
 - [x] Storage and query prices checked against public list prices (October 2026); see §9. Re-check yearly.
 - [x] Removed the false-positive share: the engine never used it. The alert-storm scenario sets its false-alarm count directly.
-- [ ] Queue waits outside an alert storm are still fixed defaults; only the storm uses a capacity model (analysts on shift × triage time). Consider using the capacity model everywhere.
-- [ ] §1 employees and alerts per day are context only; the engine doesn't read them.
+- [x] Queue waits: fixed values describe a normal day, at about 50% analyst utilization (§1). The capacity model applies during alert storms, the only time the queue grows faster than analysts can clear it.
+- [x] §1 is now consistent with the analyst capacity. Employees and alerts per day are context that explains the fixed waits; the engine doesn't read them.
 
 ## 9. Sources
 
