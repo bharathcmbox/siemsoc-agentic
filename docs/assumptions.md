@@ -104,7 +104,15 @@ Business hours are 08:00–18:00.
 | Human approval wait (business hours) | 10 min | 1 – 60 min | Illustrative |
 | Human approval wait (off hours, on-call) | 30 min | 5 – 120 min | Illustrative |
 | Query budget per investigation | $50 | $0 – $500 | Illustrative |
-| Hunting agent schedule | Daily, 02:00 | Any hour | Illustrative |
+
+## 5b. Scheduled sweep (both operating models)
+
+| Parameter | Default | Range | Source |
+|---|---|---|---|
+| Nightly scheduled sweep of cold data | On | On / Off | Illustrative |
+| Sweep runs daily at | 02:00 | Any hour | Illustrative |
+
+The sweep is an automated search, not an agent. A hit becomes an alert like any other: on the traditional side it waits in the (off-hours) queue; on the agentic side an agent triages it immediately.
 
 ## 6. Data-tier latency
 

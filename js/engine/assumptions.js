@@ -44,7 +44,10 @@ export const PARAMS = [
   { id: 'approvalWait',     group: 'agent', label: 'Human approval wait, business hours', unit: 'min', min: 1, max: 60, step: 1, value: 10 },
   { id: 'approvalWaitOff',  group: 'agent', label: 'Human approval wait, off hours', unit: 'min', min: 5, max: 120, step: 5, value: 30 },
   { id: 'reviewMinutes',    group: 'agent', label: 'Human review per approval / report', unit: 'min', min: 1, max: 15, step: 1, value: 5 },
-  { id: 'huntHour',         group: 'agent', label: 'Hunting agent runs daily at', unit: 'h', min: 0, max: 23, step: 1, value: 2 },
+
+  // Detection on cold data (an automated job; available to both operating models)
+  { id: 'scheduledSweep',   group: 'sweep', label: 'Nightly scheduled sweep of cold data', unit: 'bool', value: true },
+  { id: 'huntHour',         group: 'sweep', label: 'Scheduled sweep runs daily at', unit: 'h', min: 0, max: 23, step: 1, value: 2 },
 
   // Data-tier latency
   { id: 'cheapSearchMin',   group: 'latency', label: 'Cheap tier search job', unit: 'min', min: 2, max: 60, step: 1, value: 20 },
@@ -55,6 +58,7 @@ export const PARAM_GROUPS = {
   cost: 'Data cost',
   human: 'Traditional SOC timing',
   agent: 'Agentic SOC timing',
+  sweep: 'Scheduled sweep',
   latency: 'Cold data latency',
 };
 

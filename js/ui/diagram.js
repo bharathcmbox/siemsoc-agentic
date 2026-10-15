@@ -26,8 +26,8 @@ const EXPLAIN = {
   lake: 'Data lake: open-format files in object storage, queried in place. Cheapest to keep, queries take minutes, and real-time detection needs a separate streaming path.',
   dropped: 'Not collected: sources cut to stay within the SIEM budget. Nothing can detect or investigate with them, now or later.',
   rules: 'Real-time detection rules watch hot data as it arrives and raise alerts. They cannot see cheap storage, the lake, or anything not collected.',
-  huntOn: "Hunting agent: sweeps cold data on a schedule (daily by default) for patterns the real-time rules couldn't see. Late, but better than never.",
-  huntOff: 'No hunting in this setup. Cold data is only searched when an analyst thinks to look.',
+  huntOn: "Scheduled sweep: an automated nightly search of stored data for known patterns the real-time rules couldn't see, such as newly registered domains or new threat-intel matches. Any SIEM can run one. Late, but better than never. On the agentic side, an AI agent picks up the hit straight away; otherwise it waits for the on-call analyst.",
+  huntOff: 'No scheduled sweep in this setup. Stored data is only searched when someone thinks to look.',
   soar: 'SOAR + analysts: alerts wait in a queue, Tier-1 triages, Tier-2 investigates by hand across tools, and SOAR runs fixed playbooks.',
   agents: 'AI agents triage every alert on arrival, query every tool and data tier, and propose actions with the evidence attached.',
   approval: 'Human approval: an analyst reviews the evidence and approves high-impact actions. The agent does not act alone on those.',
@@ -98,8 +98,8 @@ export function createDiagram(root, { onPipeline }) {
     box('dropped', 312, 208, 124, 41, 'Not collected', anyDropped ? 'over budget' : 'nothing dropped', anyDropped ? 'dropped' : 'unused');
 
     box('rules', 472, 12, 104, 96, 'Real-time rules', 'detection', 'rules');
-    const hunting = model === 'agentic';
-    box(hunting ? 'huntOn' : 'huntOff', 472, 124, 104, 70, hunting ? 'Hunting agent' : 'No hunting', hunting ? 'scheduled sweep' : '', hunting ? 'hunt' : 'unused');
+    const hunting = !!result.params?.scheduledSweep;
+    box(hunting ? 'huntOn' : 'huntOff', 472, 124, 104, 70, hunting ? 'Scheduled sweep' : 'No sweep', hunting ? (model === 'agentic' ? 'nightly; AI triages hits' : 'nightly job') : '', hunting ? 'hunt' : 'unused');
 
     if (model === 'agentic') {
       box('agents', 608, 12, 104, 110, 'AI agents', 'triage, investigate', 'agent');
@@ -178,8 +178,9 @@ export function createDiagram(root, { onPipeline }) {
         for (const e of result.timeline) {
           if (e.t <= lastClock || e.t > clock) continue;
           if (e.source && e.storage && !e.prevented) travel(e.source, e.storage);
-          if (e.lane === 'detect') pulse(e.missed ? 'rules' : 'rules', e.missed ? 'miss' : 'pulse');
-          if (e.lane === 'agent') pulse(e.title.startsWith('Hunting') ? 'huntOn' : 'agents');
+          if (e.lane === 'detect' && !e.sweep) pulse(e.missed ? 'rules' : 'rules', e.missed ? 'miss' : 'pulse');
+          if (e.sweep) pulse('huntOn');
+          if (e.lane === 'agent') pulse('agents');
           if (e.lane === 'human') pulse(result.config.model === 'agentic' ? 'approval' : 'soar');
         }
       }

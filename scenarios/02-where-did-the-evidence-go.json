@@ -338,19 +338,20 @@
     }
   ],
   "hunt": {
-    "name": "H-NRD: sweep DNS/proxy history for newly registered domains",
+    "name": "Searching stored DNS/proxy history for newly registered domains",
     "needs": "E2",
     "asRule": {
       "id": "H-NRD",
-      "name": "Hunting agent: newly registered domain",
-      "logic": "Found during a scheduled sweep of cold DNS/proxy data, not in real time.",
+      "name": "Scheduled sweep: newly registered domain",
+      "logic": "Found by the nightly scheduled search of stored DNS/proxy data, not in real time.",
       "needs": [
         "E2"
       ],
       "severity": "high",
       "confidence": "clear",
       "rootCause": true,
-      "agentTriageNote": "Dana visited a 3-day-old domain and signed in from a new device a minute later. The session was used for hours afterward."
+      "agentTriageNote": "Dana visited a 3-day-old domain and signed in from a new device a minute later. The session was used for hours afterward.",
+      "triageNote": "Last night's sweep found it: Dana visited a 3-day-old domain and signed in from a new device a minute later."
     }
   },
   "variants": [
@@ -364,7 +365,7 @@
       "removeEvents": [
         "E5"
       ],
-      "end": "D1 03:30",
+      "end": "D1 06:30",
       "labels": {
         "mitre": "T1566.002 phishing link, T1557 adversary-in-the-middle, T1550.004 web session cookie, T1114.002 remote email collection"
       }

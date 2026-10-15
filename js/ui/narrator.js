@@ -67,7 +67,7 @@ export function buildBeats(A, B) {
   });
 
   // 3. First alerts.
-  const alertEntry = r => r.timeline.find(e => e.lane === 'detect' && !e.missed);
+  const alertEntry = r => r.timeline.find(e => e.lane === 'detect' && !e.missed && !e.sweep);
   const fa = R.map(r => r.metrics.firstAlertAt);
   if (fa[0] != null && fa[0] === fa[1]) {
     add(fa[0], `Both sides raise the same alert at the same moment (${alertEntry(A).title.replace('Alert: ', '')}).${sameData ? ' Same data, same rules, same timing.' : ''} Watch what each side does next: that's where they differ.`, 'alert');
@@ -75,9 +75,9 @@ export function buildBeats(A, B) {
     R.forEach((r, i) => {
       if (fa[i] == null) return;
       const e = alertEntry(r);
-      const hunt = (e.badges ?? []).includes('Hunting agent');
+      const hunt = (e.badges ?? []).includes('Scheduled sweep');
       const promo = (e.badges ?? []).includes('Promoted by routing');
-      const why = hunt ? ' It was found by the hunting agent\'s scheduled sweep of cold data, not in real time.'
+      const why = hunt ? ' It was found by the nightly scheduled sweep of stored data, not in real time.'
         : promo ? ' It fired because detection-aware routing copied the suspicious event into the hot tier.' : '';
       add(fa[i], `${NAMES[i]} raises its first alert: ${e.title.replace('Alert: ', '')}.${why} ${NAMES[1 - i]}: ${statusAt(other(i), fa[i])}.`, `alert${i}`);
     });
@@ -112,7 +112,10 @@ export function buildBeats(A, B) {
     const o = other(i);
     const oc = o.metrics.containedAt != null && o.metrics.containedAt <= t;
     const left = r.metrics.compromisedDetail.filter(c => c.at <= t && (c.revokedAt == null || c.revokedAt > t)).map(c => c.name);
-    const caveat = left.length ? ` But ${left.join(' and ')} ${left.length > 1 ? 'are' : 'is'} still compromised, and nothing on ${NAMES[i]} has noticed yet.` : '';
+    const handledLater = left.length && left.every(n => r.timeline.some(e => e.lane === 'outcome' && e.t > t && e.title.startsWith('Contained:') && e.title.includes(n)));
+    const caveat = !left.length ? '' : handledLater
+      ? ` ${left.join(' and ')} ${left.length > 1 ? 'are' : 'is'} also compromised and will be contained next.`
+      : ` But ${left.join(' and ')} ${left.length > 1 ? 'are' : 'is'} still compromised, and nothing on ${NAMES[i]} has noticed yet.`;
     add(t, `${NAMES[i]} is contained: the attacker loses access${left.length ? ' to everything that was found' : ''}.${caveat}${oc ? '' : ` On ${NAMES[1 - i]}, the attacker still has access (${statusAt(o, t)}).`}`, `contain${i}`);
   });
 

@@ -190,7 +190,7 @@ export function simulate(scenario, variantId, config, params) {
     const sev = rule.severity === 'high' ? 'High' : 'Medium';
     log(t, 'detect', `Alert: ${rule.name}`, rule.logic, {
       severity: rule.severity, rule: rule.id, ruleName: rule.name,
-      badges: [sev, ...(promoted ? ['Promoted by routing'] : []), ...(fromHunt ? ['Hunting agent'] : [])],
+      badges: [sev, ...(promoted ? ['Promoted by routing'] : []), ...(fromHunt ? ['Scheduled sweep'] : [])],
     });
     if (model === 'agentic') agentOnAlert(t, alert); else humanOnAlert(t, alert);
   }
@@ -456,8 +456,11 @@ export function simulate(scenario, variantId, config, params) {
     });
   }
 
-  // ---- hunting agent (agentic only) -------------------------------------
-  if (model === 'agentic' && scenario.hunt) {
+  // ---- scheduled sweep of cold data ---------------------------------------
+  // An automated nightly search for known patterns (e.g. newly registered
+  // domains, new threat-intel matches) over everything stored. Any SIEM can
+  // run one; what differs between operating models is who handles the hit.
+  if (params.scheduledSweep && scenario.hunt) {
     let ht = Math.floor(start / 1440) * 1440 + params.huntHour * 60;
     while (ht <= start) ht += 1440;
     if (ht <= end) {
@@ -465,10 +468,10 @@ export function simulate(scenario, variantId, config, params) {
         const ev = byId[scenario.hunt.needs];
         if (!ev || S.happened[ev.id] == null || visibility(ev) === 'dropped') return;
         if (S.case) {
-          log(t, 'agent', 'Hunting agent runs', `${L.huntSame} Already covered by the open case.`);
+          log(t, 'detect', 'Scheduled sweep runs', `${L.huntSame} Already covered by the open case.`, { sweep: true });
           return;
         }
-        log(t, 'agent', 'Hunting agent runs its scheduled sweep', `${scenario.hunt.name}. This is the first time anything has looked at this data.`);
+        log(t, 'detect', 'Scheduled sweep runs', `${scenario.hunt.name}. An automated nightly search; the first time anything has looked for this in the stored data.`, { sweep: true });
         raiseAlert(t + 1, { ...scenario.hunt.asRule }, false, true);
       });
     }
