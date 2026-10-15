@@ -21,7 +21,7 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 - `css/theme.css`: palette tokens for both themes (dark default), the bundled font, page basics
 - `css/exec.css`, `css/analyst.css`: styles for each view
 - `js/main.js`: app controller, with shared state, playback, presets, view switch, theme toggle, and the URL hash
-- `js/stories.js`: the six executive stories, their comparisons, and plain-language team names (`title`, `sub`, `ref`)
+- `js/stories.js`: the six executive stories, their comparisons, and plain-language team names (`title`, `sub`, `ref`). When a story has more than one comparison, each needs a `chapter` (a short question) and a `teaser` (one line); the race view shows them as numbered "ways to watch this story" cards
 - `js/engine/simulate.js`: discrete-event simulation of one SOC configuration against a scenario
 - `js/engine/cost.js`: routing, budget cap, and monthly cost
 - `js/engine/assumptions.js`: every slider parameter, mirrored in `docs/assumptions.md`

@@ -77,7 +77,7 @@ export function renderHome(root, { onStory }) {
         h('h2', {}, s.question),
         h('p', {}, s.hook),
         h('span', { class: 'meta' },
-          h('span', {}, s.comparisons.length > 1 ? `${s.comparisons.length} comparisons` : s.comparisons[0].label),
+          h('span', {}, s.comparisons.length > 1 ? `${s.comparisons.length} ways to watch` : s.comparisons[0].label),
           h('span', { class: 'go' }, 'Watch →')),
       ))),
     h('p', { class: 'home-foot' },
@@ -159,17 +159,34 @@ export function renderRace(root, ctx) {
       card('pipeline', 'Inside the pipeline', "How one log line becomes evidence, and where each team's data is stored.", sameData ? [0] : [0, 1], ctx.onPipeline));
   }
 
+  // The story's comparisons, told as chapters: each one a question the race
+  // below answers. A custom comparison from the analyst view gets its own card.
+  function angles() {
+    const items = comparisons.map(c => ({ id: c.id, chapter: c.chapter ?? c.label, teaser: c.teaser ?? '' }));
+    if (!ctx.comparisonId) items.push({ id: null, chapter: 'Your own comparison', teaser: 'Set up in Analyst view.' });
+    const card = (it, i) => {
+      const on = it.id === (ctx.comparisonId ?? null);
+      return h('button', {
+        type: 'button', class: 'angle', 'aria-pressed': String(on),
+        onclick: on || !it.id ? null : () => ctx.onCompare(it.id),
+      },
+        h('span', { class: 'angle-top' }, h('span', { class: 'angle-n' }, String(i + 1)), on ? h('span', { class: 'angle-now' }, 'Now watching') : null),
+        h('b', {}, it.chapter),
+        it.teaser ? h('span', { class: 'angle-teaser' }, it.teaser) : null,
+        on ? null : h('span', { class: 'angle-go' }, 'Watch this →'));
+    };
+    return h('section', { class: 'angles', 'aria-label': 'Ways to watch this story' },
+      h('div', { class: 'angles-head' }, h('h2', {}, `${items.length} ways to watch this story`), h('span', {}, 'Pick one. The race below replays with it.')),
+      h('div', { class: 'angles-row' }, items.map(card)));
+  }
+
   root.replaceChildren(
     h('button', { class: 'back', type: 'button', onclick: ctx.onBack }, '← All stories'),
     h('section', { class: 'race-head' },
       h('span', { class: 'eyebrow' }, story?.title ?? scenario.title),
       h('h1', {}, story?.question ?? scenario.title),
       h('p', {}, story?.oneLiner ?? scenario.oneLiner),
-      comparisons.length > 1 || !ctx.comparisonId
-        ? h('div', { class: 'compare', role: 'group', 'aria-label': 'Comparison' },
-          comparisons.map(c => h('button', { type: 'button', 'aria-pressed': String(c.id === ctx.comparisonId), onclick: () => ctx.onCompare(c.id) }, c.label)),
-          !ctx.comparisonId ? h('button', { type: 'button', 'aria-pressed': 'true' }, 'Custom comparison') : null)
-        : null,
+      comparisons.length > 1 || !ctx.comparisonId ? angles() : null,
     ),
     h('section', { class: 'panel', 'aria-label': 'Both teams on one clock' },
       h('div', { class: 'race-scroll' },
