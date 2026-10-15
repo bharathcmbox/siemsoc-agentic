@@ -24,7 +24,7 @@ Everything else in the attacker timeline (E0–E9) is unchanged.
 | R-IT | IdP | Doesn't fire (attacker IP is local) | Doesn't fire | Doesn't fire |
 | R-NRD | DNS/proxy + IdP | **Fires 09:14 (High)** | Can't run — proxy is in cheap tier | Can't run — no streaming rule on lake data |
 | R-FWD | Email audit | Fires 09:48 (Medium) | Fires 09:48 (Medium) | Fires 09:48 (Medium) |
-| H-NRD (hunt) | DNS/proxy | n/a | Hunting agent, daily 02:00 | Hunting agent, daily 02:00 |
+| H-NRD (scheduled sweep) | DNS/proxy | n/a | Nightly automated search, 02:00 | Nightly automated search, 02:00 |
 
 **Detection coverage** for this scenario: 2 of 2 real-time rules under index-at-ingest; 1 of 2 under tiered and lake.
 
@@ -92,17 +92,23 @@ Same as Run D, but with 3-minute lake queries instead of 20-minute cheap-tier jo
 
 ---
 
-## Variant 2b — The quiet attacker (hunting agent's moment)
+## Variant 2b — The quiet attacker
 
 The attacker skips the forwarding rule (E5) and only reads mail. **No real-time rule fires in tiered or lake architectures.**
 
-| Architecture + model | First detection |
-|---|---|
-| Index-at-ingest, either model | R-NRD at 09:14 |
-| Tiered / lake, traditional, no hunt team | **None.** Discovered when the fraud is noticed by finance — days later |
-| Tiered / lake, agentic with hunting agent | H-NRD at **02:01 next day**, about 17 hours later. Contained at 02:43 after an off-hours approval. Too late to stop the fraud request or Sam's compromise; it does cut off the attacker's ongoing access |
+The nightly scheduled sweep is an ordinary automated search, not an agent. Any SIEM can run one, so it's available to both operating models (on by default; the "Nightly scheduled sweep of cold data" setting turns it off).
 
-**This is the clearest illustration of the main point:** an agent can only investigate what something prompts it to look at. Proactive hunting partly makes up for routing choices, on a schedule. Routing evidence to where real-time detection can see it is what actually moves MTTD.
+| Architecture + model | First detection | Contained |
+|---|---|---|
+| Index-at-ingest, either model | R-NRD at 09:14 | 10:51 (traditional) / 09:36 (agentic) |
+| Tiered / lake + routing, either model | R-NRD at 09:14 (promoted) | 10:51 / 09:36 |
+| Tiered / lake, traditional | Scheduled sweep at **02:01 next day** | **04:38**: the hit waits in the off-hours queue, then on-call analysts work it by hand |
+| Tiered / lake, agentic | Scheduled sweep at **02:01 next day** | **02:43**: an agent triages and investigates immediately; the on-call analyst only approves |
+| Tiered / lake, no scheduled sweep, either model | **None.** Discovered when the fraud is noticed by finance, days later | — |
+
+Without routing, both teams are about 17 hours late, too late to stop the fraud request or Sam's compromise.
+
+**What this shows:** the sweep, not the agent, decides *when* the attacker is found; the agent decides how fast the 2 a.m. hit turns into containment (about 2 hours faster here). Routing evidence to where real-time detection can see it is what actually moves the first alert. An agent can also hunt without a pre-written query, but that's harder to show fairly, so the simulator doesn't claim it.
 
 ---
 
@@ -140,18 +146,18 @@ This is the constructive answer to message 4. The pipeline enriches each DNS/pro
 
 | Run | Plays out like | First alert | Contained | Fraud sent | Compromised users | Monthly data cost |
 |---|---|---|---|---|---|---|
-| B+ Tiered / Trad + routing | Run A | 09:14 | 10:51 | No | 1 | $12,879 |
-| C+ Lake / Trad + routing | Run A | 09:14 | 10:51 | No | 1 | $11,398 |
-| D+ Tiered / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | $12,879 |
-| E+ Lake / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | $11,398 |
+| B+ Tiered / Trad + routing | Run A | 09:14 | 10:51 | No | 1 | $12,894 |
+| C+ Lake / Trad + routing | Run A | 09:14 | 10:51 | No | 1 | $11,413 |
+| D+ Tiered / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | $12,894 |
+| E+ Lake / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | $11,413 |
 
 The **quiet attacker** (variant 2b) is also caught at 09:14 with the toggle on, because the alert no longer depends on the forwarding rule.
 
 **What the UI should say when the toggle is flipped in this scenario:**
 
-> Detection-aware routing copied **1 event** out of about 400 GB/day of DNS and proxy logs into real-time detection: Dana's visit to a 3-day-old domain. That one event moved the first alert from 09:48 to 09:14, for about $17 a month.
+> Detection-aware routing copied **1 event** out of about 525 GB/day of DNS, proxy, and firewall logs into real-time detection: Dana's visit to a 3-day-old domain. That one event moved the first alert from 09:48 to 09:14, for about $31 a month.
 >
-> It only works for patterns you anticipated. An attacker using a 30-day-old domain wouldn't be promoted. That's what the hunting agent is for.
+> It only works for patterns you anticipated. An attacker using a 30-day-old domain wouldn't be promoted. That's what hunting is for.
 
 **Final ranking for executives (illustrative):** the best outcome at close to the lowest cost is **Lake or Tiered + detection-aware routing + agentic operations**. Each of the three choices does a different job:
 - the cheaper architecture cuts the data bill

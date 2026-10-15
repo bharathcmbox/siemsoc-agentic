@@ -57,14 +57,17 @@ export function buildBeats(A, B) {
     const o = other(i);
     const otherFires = o.metrics.firstAlertAt != null && o.metrics.firstAlertAt <= b.t + 1;
     const oBlind = o.timeline.find(e => e.blindSpot && e.rule === b.rule);
-    if (oBlind && i === 1) return; // both blind: already said once
-    add(b.t, oBlind
-      ? `On both sides, the "${b.ruleName}" rule can't fire: the DNS/proxy logs it needs went to cold storage, where real-time rules don't run. The best early clue is being collected, but nobody is watching it.`
-      : `${NAMES[i]}'s "${b.ruleName}" rule can't fire: the DNS/proxy logs it needs went to cold storage, where real-time rules don't run.${otherFires ? ` ${NAMES[1 - i]} has the same logs in its hot tier, and that's why its rule fires.` : ''}`, 'blind');
+    if (oBlind && oBlind.dropped === b.dropped && i === 1) return; // same blind spot: already said once
+    const why = x => x.dropped
+      ? `the ${x.sources} logs it needs aren't collected at all, to stay within the SIEM budget`
+      : `the ${x.sources} logs it needs went to cold storage, where real-time rules don't run`;
+    add(b.t, oBlind && oBlind.dropped === b.dropped
+      ? `On both sides, the "${b.ruleName}" rule can't fire: ${why(b)}.${b.dropped ? '' : ' The best early clue is being collected, but nobody is watching it.'}`
+      : `${NAMES[i]}'s "${b.ruleName}" rule can't fire: ${why(b)}.${otherFires ? ` ${NAMES[1 - i]} gets those logs into real-time detection, and that's why its rule fires.` : ''}`, `blind${i}`);
   });
 
   // 3. First alerts.
-  const alertEntry = r => r.timeline.find(e => e.lane === 'detect' && !e.missed);
+  const alertEntry = r => r.timeline.find(e => e.lane === 'detect' && !e.missed && !e.sweep);
   const fa = R.map(r => r.metrics.firstAlertAt);
   if (fa[0] != null && fa[0] === fa[1]) {
     add(fa[0], `Both sides raise the same alert at the same moment (${alertEntry(A).title.replace('Alert: ', '')}).${sameData ? ' Same data, same rules, same timing.' : ''} Watch what each side does next: that's where they differ.`, 'alert');
@@ -72,10 +75,10 @@ export function buildBeats(A, B) {
     R.forEach((r, i) => {
       if (fa[i] == null) return;
       const e = alertEntry(r);
-      const hunt = (e.badges ?? []).includes('Hunting agent');
+      const hunt = (e.badges ?? []).includes('Scheduled sweep');
       const promo = (e.badges ?? []).includes('Promoted by routing');
-      const why = hunt ? ' It was found by the hunting agent\'s scheduled sweep of cold data, not in real time.'
-        : promo ? ' It fired because detection-aware routing copied the suspicious DNS event into the hot tier.' : '';
+      const why = hunt ? ' It was found by the nightly scheduled sweep of stored data, not in real time.'
+        : promo ? ' It fired because detection-aware routing copied the suspicious event into the hot tier.' : '';
       add(fa[i], `${NAMES[i]} raises its first alert: ${e.title.replace('Alert: ', '')}.${why} ${NAMES[1 - i]}: ${statusAt(other(i), fa[i])}.`, `alert${i}`);
     });
   }
@@ -108,7 +111,12 @@ export function buildBeats(A, B) {
     if (t == null) return;
     const o = other(i);
     const oc = o.metrics.containedAt != null && o.metrics.containedAt <= t;
-    add(t, `${NAMES[i]} is contained: the attacker loses access.${oc ? '' : ` On ${NAMES[1 - i]}, the attacker still has access (${statusAt(o, t)}).`}`, `contain${i}`);
+    const left = r.metrics.compromisedDetail.filter(c => c.at <= t && (c.revokedAt == null || c.revokedAt > t)).map(c => c.name);
+    const handledLater = left.length && left.every(n => r.timeline.some(e => e.lane === 'outcome' && e.t > t && e.title.startsWith('Contained:') && e.title.includes(n)));
+    const caveat = !left.length ? '' : handledLater
+      ? ` ${left.join(' and ')} ${left.length > 1 ? 'are' : 'is'} also compromised and will be contained next.`
+      : ` But ${left.join(' and ')} ${left.length > 1 ? 'are' : 'is'} still compromised, and nothing on ${NAMES[i]} has noticed yet.`;
+    add(t, `${NAMES[i]} is contained: the attacker loses access${left.length ? ' to everything that was found' : ''}.${caveat}${oc ? '' : ` On ${NAMES[1 - i]}, the attacker still has access (${statusAt(o, t)}).`}`, `contain${i}`);
   });
 
   // 7. Attacker steps that happen on one side but were prevented on the other.
@@ -131,7 +139,7 @@ export function buildBeats(A, B) {
   R.forEach((r, i) => {
     if (rc[i] == null || rc[i] === rc[1 - i] || rc[i] === r.metrics.firstAlertAt) return;
     const o = rc[1 - i];
-    add(rc[i], `${NAMES[i]} now knows how the attack started: the phishing domain.${o != null && o < rc[i] ? ` ${NAMES[1 - i]} found that ${fmtDuration(rc[i] - o)} earlier.` : ''}`, `root${i}`);
+    add(rc[i], `${NAMES[i]} now knows how the attack started (the ${r.labels.indicatorKind}).${o != null && o < rc[i] ? ` ${NAMES[1 - i]} found that ${fmtDuration(rc[i] - o)} earlier.` : ''}`, `root${i}`);
   });
 
   // 9. Case closed.

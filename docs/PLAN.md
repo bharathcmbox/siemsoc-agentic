@@ -1,6 +1,6 @@
 # Agentic SOC Simulator — Plan
 
-Status: approved (rev 4: detection-aware routing toggle added). Phase 2 MVP built.
+Status: approved (rev 5). Phases 1–2 done; Phase 3 built: architecture diagram, pipeline walk-through, budget cap, scenario 5.
 
 ## 1. Goal and audience
 
@@ -36,7 +36,7 @@ Stage by stage:
 | Stage | Traditional | Agentic |
 |---|---|---|
 | **Ingestion** | The data architecture sets what happens here: index everything, route data to tiers, or land it in the lake. | Same architecture choices. The agent doesn't change ingestion. |
-| **Detection** | Static correlation rules, which only run on data they can see in real time. | The same rules run, the agent groups related signals into a single case, and an optional hunting agent searches cold data on a schedule. |
+| **Detection** | Static correlation rules, which only run on data they can see in real time. | The same rules run, and the agent groups related signals into a single case. (Scheduled sweeps of cold data are an automated job available to both models; the agent handles their hits faster.) |
 | **Triage** | The alert waits in a queue, then gets checked by hand. | Immediate automated triage, enrichment and scoring. |
 | **Investigation** | An analyst pivots across tools by hand. | The agent queries the tools itself, across all data tiers, and cites its evidence. |
 | **Response** | A fixed playbook runs if the alert matches it. Otherwise the work is manual. | The agent adapts the response and **asks for human approval** before high-impact actions. |
@@ -88,12 +88,12 @@ All scenarios are deterministic, scripted JSON files. There are no live LLM call
    - **Tiered:** only a medium-severity "new forwarding rule" alert fires, about 90 minutes later. Investigation stalls until someone searches the cold tier and waits for it.
    - **Federated / lake:** searching in place finds the evidence in minutes once someone looks. There's still no real-time alert.
    - **Agentic on tiered or lake:** the agent picks up the medium alert right away and searches the cold tier without being asked. It finds the phishing click and **two other users who clicked the same link**. A per-investigation query budget acts as a guardrail.
-   - **Hunting agent (quiet-attacker variant):** if the attacker never creates the forwarding rule, nothing fires in real time on tiered or lake. The hunting agent's nightly sweep of cold data is the first detection, about 17 hours later. That's too late to stop the fraud request or the second compromise, but it does end the attacker's access.
-   - **Takeaway:** the agent shortens the time from alert to containment and widens the scope of what gets found. It **can't move the first alert earlier**, though. Only routing and detection engineering can do that, and a hunting agent can only partly make up for it, on a schedule.
-   - **With detection-aware routing on:** newly-registered-domain hits get promoted to the hot tier, so the early alert fires at 09:14 on tiered and lake too. That adds only about $20 a month in hot-tier cost. Combined with the agentic model, this gives the best outcome at close to the cheapest cost.
+   - **Quiet-attacker variant:** if the attacker never creates the forwarding rule, nothing fires in real time on tiered or lake. A nightly scheduled sweep of cold data (an ordinary automated job, available to both teams) is the first detection, about 17 hours later. Today's team contains it at 04:38 after the overnight queue; the agentic team at 02:43. Both are too late to stop the fraud request or the second compromise.
+   - **Takeaway:** the agent shortens the time from alert to containment and widens the scope of what gets found. It **can't move the first alert earlier**, though. Only routing and detection engineering can do that, and a scheduled sweep can only partly make up for it, hours later.
+   - **With detection-aware routing on:** newly-registered-domain hits get promoted to the hot tier, so the early alert fires at 09:14 on tiered and lake too. That adds only about $31 a month in hot-tier cost. Combined with the agentic model, this gives the best outcome at close to the cheapest cost.
 3. **Alert storm:** one real threat hidden in 500 false positives, showing how alert fatigue lets a real threat slip through.
 4. **Ransomware precursor:** lateral movement, then a mass file rename, racing against the clock.
-5. **Ingestion cost:** a noisy firewall or DNS source, comparing ingest-all with filter-and-route.
+5. **The budget and the noisy source (ingestion cost):** under a monthly SIEM budget cap, index-at-ingest has to stop collecting firewall and DNS logs; tiered storage keeps them, and routing makes them useful in real time. The attack is malware calling home to a known C2 server, then source-code theft. See `docs/scenarios/05-budget-and-the-noisy-source.md`.
 
 ## 5. Agent architecture: the "Inside the agent" view
 
@@ -156,6 +156,6 @@ index.html            entry point
 
 1. **Concepts and assumptions:** the primer (SIEM, SOAR, pipelines, data architectures, agentic SOC, agent design), the metrics and cost model, scenarios 1 and 2 scripted on paper.
 2. **MVP:** the engine with both selectors and the detection-aware routing toggle (including its info panel), the split view and timeline, a narrator that explains each key moment and how the two sides differ (with optional pause at each moment), scenarios 1 and 2 (including the hunting agent), and the executive summary card. *Review checkpoint.*
-3. **Ingestion and architecture views:** the animated diagram, the routing and data-cleaning visuals, and scenario 5.
+3. **Ingestion and architecture views:** a per-side architecture diagram (animated, click to explain), an "Inside the pipeline" walk-through of one real event (parse, normalize, enrich, reduce, route) with daily volume bars, a SIEM budget cap that drops low-value sources, and scenario 5. *Built.*
 4. **Depth:** the "Inside the agent" view (generalist vs specialist team), guided tour presets, the honest section, the vendor-questions card, and scenarios 3 and 4.
 5. **Polish and publish:** mobile layout, GitHub Pages setup, and README.

@@ -30,11 +30,12 @@ function build() {
         h('li', {}, 'Domain registered less than 7 days ago'),
         h('li', {}, 'Domain on a threat-intelligence list'),
         h('li', {}, 'Lookalike of a company domain (e.g. halvorsen-login vs halvorsen)'),
+        h('li', {}, 'Firewall connection to an IP address on a threat-intelligence list'),
       ),
 
       h('div', { class: 'three' },
         h('div', {}, h('h3', {}, 'What it buys'),
-          'The real-time detections you planned for work again, for a tiny share of the data: about ', shareSpan = h('span'), ' of DNS/proxy volume here.'),
+          'The real-time detections you planned for work again, for a tiny share of the data: about ', shareSpan = h('span'), ' of DNS/proxy and firewall volume here.'),
         h('div', {}, h('h3', {}, 'What it costs'),
           'A small amount of hot-tier volume (about ', costSpan = h('span'), ' a month here). Someone has to keep the pattern list current, and the pipeline now depends on its enrichment lookups.'),
         h('div', {}, h('h3', {}, "What it doesn't fix"),

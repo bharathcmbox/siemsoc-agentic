@@ -89,7 +89,9 @@ The pipeline enriches events as they arrive (for example, "this domain was regis
 
 - ✅ The anticipated detections work in real time again, for a tiny share of the volume.
 - ❌ It only catches patterns someone thought of in advance. The pattern list needs upkeep, and the pipeline now depends on its enrichment lookups.
-- ➜ Unanticipated patterns still need hunting over the cold data, by people or a hunting agent.
+- ➜ Unanticipated patterns still need hunting over the cold data: by people, by scheduled searches, or by an agent.
+
+The same idea works for firewall logs: a connection to an IP address on a threat-intelligence list is copied to the hot tier, while the millions of routine connections are not.
 
 ### Summary
 
@@ -150,7 +152,7 @@ What does **not** change:
 No. An agentic SOC compresses the **response** side (MTTR, analyst effort, scoping) dramatically. The **detection** side (MTTD) still depends on:
 
 1. **Detection-aware routing** — don't send detection-relevant data to a tier no rule watches.
-2. **Streaming detections or proactive hunting** over cheap/lake data. A hunting agent can do the latter, but on a schedule, not in real time.
+2. **Streaming detections or proactive hunting** over cheap/lake data. Scheduled searches for known patterns are ordinary automation that any SIEM can run; they don't need an agent, but they find things hours later, not in real time. Where an agent adds value is acting on the hit immediately at 2 a.m., and hunting without a pre-written query.
 
 ### What can go wrong
 

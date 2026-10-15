@@ -13,13 +13,14 @@ export const SOURCES = [
 // Parameters exposed as sliders. `group` controls where they appear in the UI.
 export const PARAMS = [
   // Cost
+  { id: 'hotBudget',        group: 'cost', label: 'Monthly SIEM budget cap', unit: '$', min: 0, max: 50000, step: 1000, value: 0, zeroLabel: 'No cap' },
   { id: 'reduction',        group: 'cost', label: 'Pipeline volume reduction', unit: '%', min: 0, max: 60, step: 5, value: 30 },
   { id: 'hotPerGb',         group: 'cost', label: 'Hot tier, $ per GB ingested', unit: '$', min: 0.5, max: 6, step: 0.25, value: 2.0 },
   { id: 'cheapPerGb',       group: 'cost', label: 'Cheap tier, $ per GB ingested', unit: '$', min: 0.02, max: 0.5, step: 0.01, value: 0.15 },
   { id: 'lakePerGbMonth',   group: 'cost', label: 'Lake storage, $ per GB-month', unit: '$', min: 0.01, max: 0.05, step: 0.001, value: 0.023 },
   { id: 'lakeCompression',  group: 'cost', label: 'Lake compression ratio', unit: '×', min: 2, max: 10, step: 1, value: 5 },
   { id: 'lakeRetentionDays',group: 'cost', label: 'Lake retention', unit: 'days', min: 30, max: 730, step: 30, value: 365 },
-  { id: 'promoteShare',     group: 'cost', label: 'Share of DNS/proxy promoted by routing', unit: '%', min: 0.01, max: 2, step: 0.01, value: 0.1 },
+  { id: 'promoteShare',     group: 'cost', label: 'Share of DNS/proxy and firewall promoted by routing', unit: '%', min: 0.01, max: 2, step: 0.01, value: 0.1 },
   { id: 'cheapSearchCost',  group: 'cost', label: 'Cheap tier, $ per search job', unit: '$', min: 0, max: 50, step: 1, value: 5 },
   { id: 'lakeQueryCost',    group: 'cost', label: 'Lake, $ per query (typical scan)', unit: '$', min: 0, max: 20, step: 0.5, value: 1.5 },
 
@@ -43,7 +44,10 @@ export const PARAMS = [
   { id: 'approvalWait',     group: 'agent', label: 'Human approval wait, business hours', unit: 'min', min: 1, max: 60, step: 1, value: 10 },
   { id: 'approvalWaitOff',  group: 'agent', label: 'Human approval wait, off hours', unit: 'min', min: 5, max: 120, step: 5, value: 30 },
   { id: 'reviewMinutes',    group: 'agent', label: 'Human review per approval / report', unit: 'min', min: 1, max: 15, step: 1, value: 5 },
-  { id: 'huntHour',         group: 'agent', label: 'Hunting agent runs daily at', unit: 'h', min: 0, max: 23, step: 1, value: 2 },
+
+  // Detection on cold data (an automated job; available to both operating models)
+  { id: 'scheduledSweep',   group: 'sweep', label: 'Nightly scheduled sweep of cold data', unit: 'bool', value: true },
+  { id: 'huntHour',         group: 'sweep', label: 'Scheduled sweep runs daily at', unit: 'h', min: 0, max: 23, step: 1, value: 2 },
 
   // Data-tier latency
   { id: 'cheapSearchMin',   group: 'latency', label: 'Cheap tier search job', unit: 'min', min: 2, max: 60, step: 1, value: 20 },
@@ -54,6 +58,7 @@ export const PARAM_GROUPS = {
   cost: 'Data cost',
   human: 'Traditional SOC timing',
   agent: 'Agentic SOC timing',
+  sweep: 'Scheduled sweep',
   latency: 'Cold data latency',
 };
 

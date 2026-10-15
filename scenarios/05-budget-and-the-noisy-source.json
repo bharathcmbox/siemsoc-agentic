@@ -1,0 +1,435 @@
+{
+  "id": "05-budget-and-the-noisy-source",
+  "date": "2026-03-12",
+  "start": "08:30",
+  "end": "17:00",
+  "firstMaliciousEvent": "E1",
+  "rootCauseEvent": "E2",
+  "title": "The budget and the noisy source",
+  "short": "5 · The budget and the noisy source",
+  "oneLiner": "An engineer installs a trojanized tool. The malware calls home to a known command-and-control (C2) server, the attacker moves to a build server, and starts stealing source code. The company's SIEM budget is capped at $15,000 a month.",
+  "teaching": "At $2 per GB, indexing everything costs about $42,000 a month, so under the cap index-at-ingest has to stop collecting the noisiest logs: firewall and DNS. Tiered storage keeps them for a fraction of the cost, and detection-aware routing makes the suspicious ones useful in real time.",
+  "paramOverrides": {
+    "hotBudget": 15000
+  },
+  "defaultPreset": "budget",
+  "labels": {
+    "victim": "Jordan",
+    "victimFull": "Jordan's laptop",
+    "rootCause": "Jordan's laptop is running malware that calls home to cdn-telemetry-sync.example (203.0.113.80), a C2 server on the threat-intel feed. It arrived in a trojanized PDF converter installed at 08:52",
+    "attackSummary": "malware on Jordan's laptop is under an attacker's control",
+    "hotEvidence": "EDR shows the archive job on the build server, run by a service account that signed in from Jordan's laptop at 10:45",
+    "ambiguousNote": "Archiving source code on a build server could be a legitimate backup. The analyst checks EDR history and change tickets before deciding.",
+    "objectiveImpact": "4 GB of source code for the company's routing software is now outside the network.",
+    "undetected": "No alert fired at any point.",
+    "mitre": "T1204.002 malicious file, T1071.001 web-protocol C2, T1021 remote services, T1560.001 archive via utility, T1567.002 exfiltration to cloud storage",
+    "accessCut": "Jordan's laptop was isolated",
+    "lureGone": "the malicious download was removed",
+    "indicatorBlocked": "the C2 server was blocked at DNS and the firewall",
+    "containDone": "Jordan's laptop and the servers it reached are isolated from the network; the stolen service-account password is reset",
+    "blockTitle": "C2 server blocked",
+    "blockDone": "cdn-telemetry-sync.example and 203.0.113.80 blocked at DNS and the firewall",
+    "revokeDone": "Additional infected machine(s) isolated",
+    "scopeSearch": "other machines talking to the C2 server",
+    "scopeTitle": "Other infected machines identified",
+    "scopeFound": "Contacted the C2 server",
+    "scopeLost": "Still active",
+    "scopeNoneLost": "No other machine is still active.",
+    "humanPivot": "Pivots across EDR, identity logs, and the server's process history, one console at a time.",
+    "confirmAsk": "Tier-2 asks the build team whether the archive is expected",
+    "confirmReply": "Build team replies: \"That's not ours\"",
+    "playbook": "SOAR isolates the machines from the network and resets the service-account password.",
+    "rootMissingNote": "Nobody can tell whether other machines are infected.",
+    "rootSearch": "DNS and firewall history for Jordan's laptop",
+    "fullFinding": "The agent also checks which other machines contacted the same server.",
+    "fullPackage": "isolate Jordan's laptop and any server it reached; reset the service-account password; block the C2 server at DNS and the firewall",
+    "containPackage": "isolate Jordan's laptop and the build server; reset the service-account password",
+    "blockPackage": "block the C2 server at DNS and the firewall",
+    "revokeVerb": "isolate",
+    "pivotTitle": "Agent checks the threat-intel feed",
+    "pivotText": "The C2 server was added to the feed yesterday, tagged as part of an active intrusion campaign.",
+    "huntSame": "Finds the same C2 server.",
+    "linkedNote": "Same machines, same attacker.",
+    "objectiveShort": "Source code exfiltrated",
+    "objectiveStatus": "source code exfiltrated",
+    "accessLabel": "Attacker active",
+    "accessNever": "never got hands-on",
+    "compromisedLabel": "Compromised machines",
+    "secondVictim": "the C2 server was still reachable when another laptop got infected",
+    "indicatorKind": "C2 server"
+  },
+  "events": [
+    {
+      "id": "E0",
+      "time": "08:40",
+      "actor": "user",
+      "benign": true,
+      "source": "idp",
+      "title": "Jordan signs in at the Chicago office",
+      "summary": "A normal start to the day."
+    },
+    {
+      "id": "E1",
+      "time": "08:52",
+      "actor": "attacker",
+      "source": "edr",
+      "title": "Jordan installs a trojanized PDF converter",
+      "summary": "Downloaded from a lookalike site. It's unsigned, but EDR doesn't flag it: nothing matches a known signature.",
+      "raw": {
+        "class_name": "Process Activity",
+        "time": "2026-03-12T13:52:10Z",
+        "activity_name": "Launch",
+        "device": {
+          "hostname": "HLV-ENG-LT117"
+        },
+        "actor": {
+          "user": "jordan.ellis@halvorsen.example"
+        },
+        "process": {
+          "name": "pdfconvert_setup.exe",
+          "signed": false,
+          "sha256": "9f2c…e41a"
+        },
+        "disposition": "Allowed"
+      }
+    },
+    {
+      "id": "E2",
+      "time": "08:53",
+      "actor": "attacker",
+      "source": "dns",
+      "promotable": true,
+      "contact": "Jordan's laptop",
+      "title": "The malware looks up its C2 server",
+      "summary": "The laptop resolves cdn-telemetry-sync.example. That domain was added to the threat-intel feed yesterday.",
+      "raw": {
+        "class_name": "DNS Activity",
+        "time": "2026-03-12T13:53:02Z",
+        "src_endpoint": {
+          "hostname": "HLV-ENG-LT117",
+          "ip": "10.20.31.117"
+        },
+        "query": {
+          "hostname": "cdn-telemetry-sync.example",
+          "type": "A"
+        },
+        "answers": [
+          {
+            "rdata": "203.0.113.80"
+          }
+        ],
+        "enrichment": {
+          "threat_intel": {
+            "matched": true,
+            "list": "partner-feed",
+            "added": "2026-03-11"
+          }
+        }
+      }
+    },
+    {
+      "id": "E3",
+      "time": "08:53",
+      "actor": "attacker",
+      "source": "fw",
+      "promotable": true,
+      "compromises": "Jordan's laptop",
+      "title": "First beacon to the C2 server",
+      "summary": "An outbound HTTPS connection to 203.0.113.80, repeated every 5 minutes. The firewall allows it, because outbound HTTPS is normal.",
+      "raw": {
+        "class_name": "Network Activity",
+        "time": "2026-03-12T13:53:05Z",
+        "activity_name": "Traffic",
+        "disposition": "Allowed",
+        "src_endpoint": {
+          "ip": "10.20.31.117"
+        },
+        "dst_endpoint": {
+          "ip": "203.0.113.80",
+          "port": 443
+        },
+        "traffic": {
+          "bytes_out": 1840,
+          "bytes_in": 612
+        },
+        "enrichment": {
+          "threat_intel": {
+            "matched": true
+          }
+        }
+      }
+    },
+    {
+      "id": "E4",
+      "time": "09:30",
+      "actor": "attacker",
+      "source": "edr",
+      "requires": [
+        "attackerAccess"
+      ],
+      "accessStart": true,
+      "title": "Attacker starts exploring the network",
+      "summary": "Hands-on-keyboard: lists file shares and finds a service-account password cached on the laptop."
+    },
+    {
+      "id": "E5",
+      "time": "10:45",
+      "actor": "attacker",
+      "source": "fw",
+      "promotable": true,
+      "requires": [
+        "attackerAccess",
+        "indicatorReachable"
+      ],
+      "compromises": "Build server",
+      "containedWithPrimary": true,
+      "contact": "Build server",
+      "title": "Attacker moves to the build server",
+      "summary": "Signs in with the stolen service-account password. The build server starts calling the same C2 server."
+    },
+    {
+      "id": "E8",
+      "time": "11:30",
+      "actor": "user",
+      "source": "fw",
+      "promotable": true,
+      "requires": [
+        "indicatorReachable"
+      ],
+      "compromises": "Alex's laptop",
+      "contact": "Alex's laptop",
+      "title": "Alex installs the same PDF converter",
+      "summary": "A second engineer finds the same lookalike site. Another laptop starts calling the C2 server. Nothing in EDR flags it."
+    },
+    {
+      "id": "E6",
+      "time": "12:40",
+      "actor": "attacker",
+      "source": "edr",
+      "requires": [
+        "access:Build server",
+        "indicatorReachable"
+      ],
+      "title": "Attacker packs 4 GB of source code into an archive",
+      "summary": "On the build server, using a built-in archive tool.",
+      "raw": {
+        "class_name": "Process Activity",
+        "time": "2026-03-12T17:40:44Z",
+        "activity_name": "Launch",
+        "device": {
+          "hostname": "HLV-BLD-SRV02"
+        },
+        "actor": {
+          "user": "svc-build"
+        },
+        "process": {
+          "name": "tar",
+          "cmd_line": "tar -czf /tmp/.cache/r.tgz /srv/repos/routing-core"
+        }
+      }
+    },
+    {
+      "id": "E7",
+      "time": "13:10",
+      "actor": "attacker",
+      "source": "fw",
+      "requires": [
+        "access:Build server",
+        "indicatorReachable"
+      ],
+      "objective": true,
+      "title": "4 GB uploaded to external storage",
+      "summary": "The archive leaves the network over HTTPS to a file-sharing service.",
+      "raw": {
+        "class_name": "Network Activity",
+        "time": "2026-03-12T18:10:31Z",
+        "activity_name": "Traffic",
+        "disposition": "Allowed",
+        "src_endpoint": {
+          "hostname": "HLV-BLD-SRV02"
+        },
+        "dst_endpoint": {
+          "hostname": "files.storage-share.example",
+          "port": 443
+        },
+        "traffic": {
+          "bytes_out": 4294967296
+        }
+      }
+    }
+  ],
+  "rules": [
+    {
+      "id": "R-TI",
+      "name": "Connection to a threat-intel-listed server",
+      "logic": "Outbound traffic to an IP address on the threat-intelligence feed.",
+      "needs": [
+        "E3"
+      ],
+      "severity": "high",
+      "confidence": "clear",
+      "rootCause": true,
+      "triageNote": "The destination is on yesterday's threat-intel feed, and the laptop calls it every 5 minutes.",
+      "agentTriageNote": "Regular connections from one laptop to a known C2 server: active malware. Investigating."
+    },
+    {
+      "id": "R-STAGE",
+      "name": "Large archive created on a server",
+      "logic": "A built-in archive tool compressing thousands of files on a server.",
+      "needs": [
+        "E6"
+      ],
+      "severity": "medium",
+      "confidence": "ambiguous",
+      "triageNote": "Could be a backup job, could be data theft. Needs a closer look.",
+      "agentTriageNote": "A 4 GB source-code archive, made by a service account that normally only runs builds and that signed in from an engineer's laptop at 10:45. High risk despite the medium severity. Investigating."
+    },
+    {
+      "id": "R-EXF",
+      "name": "Large upload to unfamiliar external storage",
+      "logic": "Gigabytes leaving the network to a file-sharing service never used before.",
+      "needs": [
+        "E7"
+      ],
+      "severity": "high",
+      "confidence": "clear"
+    }
+  ],
+  "variants": [
+    {
+      "id": "default",
+      "label": "As scripted"
+    }
+  ],
+  "pipelineDemo": {
+    "source": "fw",
+    "caption": "Jordan's laptop calling the C2 server at 08:53",
+    "pattern": "destination IP on a threat-intel list",
+    "stages": {
+      "raw": "Mar 12 13:53:05 hlv-fw01 kernel: [FW] ALLOW OUT IN=eth1 OUT=eth0 MAC=00:1a:2b:3c:4d:5e SRC=10.20.31.117 DST=203.0.113.80 LEN=1840 TOS=0x00 TTL=127 ID=40122 DF PROTO=TCP SPT=51544 DPT=443 RULE=out-https-any",
+      "parsed": {
+        "timestamp": "Mar 12 13:53:05",
+        "host": "hlv-fw01",
+        "action": "ALLOW",
+        "direction": "OUT",
+        "in_if": "eth1",
+        "out_if": "eth0",
+        "mac": "00:1a:2b:3c:4d:5e",
+        "src": "10.20.31.117",
+        "dst": "203.0.113.80",
+        "len": 1840,
+        "tos": "0x00",
+        "ttl": 127,
+        "id": 40122,
+        "df": true,
+        "proto": "TCP",
+        "spt": 51544,
+        "dpt": 443,
+        "rule": "out-https-any"
+      },
+      "normalized": {
+        "class_name": "Network Activity",
+        "time": "2026-03-12T13:53:05Z",
+        "activity_name": "Traffic",
+        "disposition": "Allowed",
+        "src_endpoint": {
+          "ip": "10.20.31.117",
+          "port": 51544
+        },
+        "dst_endpoint": {
+          "ip": "203.0.113.80",
+          "port": 443
+        },
+        "connection_info": {
+          "protocol_name": "tcp",
+          "direction": "Outbound"
+        },
+        "traffic": {
+          "bytes": 1840
+        },
+        "metadata": {
+          "product": "firewall",
+          "host": "hlv-fw01",
+          "rule": "out-https-any"
+        },
+        "unmapped": {
+          "mac": "00:1a:2b:3c:4d:5e",
+          "ttl": 127,
+          "tos": "0x00",
+          "id": 40122
+        }
+      },
+      "enriched": {
+        "class_name": "Network Activity",
+        "time": "2026-03-12T13:53:05Z",
+        "disposition": "Allowed",
+        "src_endpoint": {
+          "ip": "10.20.31.117",
+          "hostname": "HLV-ENG-LT117",
+          "owner": "jordan.ellis",
+          "department": "Engineering"
+        },
+        "dst_endpoint": {
+          "ip": "203.0.113.80",
+          "port": 443,
+          "location": {
+            "country": "NL"
+          },
+          "autonomous_system": {
+            "name": "Example Hosting B.V."
+          }
+        },
+        "enrichment": {
+          "threat_intel": {
+            "matched": true,
+            "list": "partner-feed",
+            "added": "2026-03-11",
+            "campaign": "active intrusion campaign"
+          }
+        },
+        "traffic": {
+          "bytes": 1840
+        },
+        "metadata": {
+          "product": "firewall",
+          "host": "hlv-fw01",
+          "rule": "out-https-any"
+        },
+        "unmapped": {
+          "mac": "00:1a:2b:3c:4d:5e",
+          "ttl": 127,
+          "tos": "0x00",
+          "id": 40122
+        }
+      },
+      "reduced": {
+        "class_name": "Network Activity",
+        "time": "2026-03-12T13:53:05Z",
+        "disposition": "Allowed",
+        "src_endpoint": {
+          "hostname": "HLV-ENG-LT117",
+          "owner": "jordan.ellis"
+        },
+        "dst_endpoint": {
+          "ip": "203.0.113.80",
+          "port": 443
+        },
+        "enrichment": {
+          "threat_intel": {
+            "matched": true,
+            "list": "partner-feed"
+          }
+        },
+        "traffic": {
+          "bytes": 1840
+        },
+        "count": 12,
+        "window": "1 hour"
+      }
+    },
+    "notes": {
+      "enriched": "The threat-intel match is what turns a routine outbound HTTPS connection into evidence.",
+      "reduced": "Removed: MAC address, TTL, packet ID, and other header fields nobody queries. The 12 identical beacons per hour become one record with a count."
+    }
+  }
+}
