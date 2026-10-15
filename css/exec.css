@@ -22,10 +22,12 @@
 .eyebrow { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
 
 /* ---------- home ---------- */
-.hero { padding-block: 40px 28px; max-width: 46rem; }
-.hero h1 { font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15; font-weight: 700; letter-spacing: -0.01em; }
-.hero p { color: var(--muted); font-size: 1.1rem; margin: 12px 0 0; max-width: 40rem; }
-.hero .how { margin-top: 18px; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; }
+.hero { padding-block: 32px 24px; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 20px 40px; align-items: end; }
+.hero h1 { font-size: clamp(1.8rem, 3.4vw, 2.4rem); line-height: 1.15; font-weight: 700; letter-spacing: -0.01em; text-wrap: pretty; }
+.hero p { color: var(--muted); font-size: 1.1rem; margin: 12px 0 0; }
+.hero-how { display: grid; gap: 12px; padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.hero .how { margin: 0; font-size: 0.95rem; display: flex; align-items: flex-start; gap: 10px; }
+@media (max-width: 860px) { .hero { grid-template-columns: 1fr; } .hero-how { padding: 0; border: 0; background: none; } }
 .hero .how svg { width: 18px; height: 18px; flex: none; }
 .stories { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 @media (max-width: 760px) { .stories { grid-template-columns: 1fr; } }
