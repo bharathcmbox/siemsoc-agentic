@@ -14,7 +14,7 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
   - **Where they appear:** cards under the race, plus caption links at the moments they explain.
   - **Inside the agent:** the AI team's steps as one agent or a team of specialists.
   - **Inside the pipeline:** one log line through parse, normalize, enrich, reduce and route.
-- **What AI agents can get wrong:** a "Before you trust an AI agent" band on the home screen, a Risks screen (`#risks`, or `#risks/<group>` to jump to a group), and the prompt-injection deep dive (`#risks/injection`). All wording comes from `docs/ai-risks.md`.
+- **What AI agents can get wrong:** a "Before you trust an AI agent" band on the home screen, a Risks screen (`#risks`, or `#risks/<group>` to jump to a group), and the prompt-injection deep dive (`#risks/injection`). Each story's verdict has a "What could go wrong here" section, the race has amber caption links to it, and "Inside the agent" marks steps that read untrusted text. Opened from a story, the risk screens offer "Back to the story". All wording comes from `docs/ai-risks.md`.
 - **Analyst view (behind a switch):** side-by-side configuration, timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
 
 ## Layout
@@ -29,13 +29,14 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 - `js/engine/assumptions.js`: every slider parameter, mirrored in `docs/assumptions.md`
 - `js/ui/`:
   - `exec.js`: home, race view, "ways to watch" cards, explore cards, caption links, scoreboard, verdict, glossary
-  - `narrator.js`: comparative "beats" built from both results. A beat can carry `links` (`{ kind: 'agent' | 'pipeline', side, label }`), which the race view shows as caption links
+  - `narrator.js`: comparative "beats" built from both results. A beat can carry `links` (`{ kind: 'agent' | 'pipeline', side, label }`, or `{ kind: 'risk', topic, label }`), which the race view shows as caption links. Each moment is tagged (`begin`, `storm`, `blind`, `alert`, `triage`, `approval`, `rootcause`, …); a scenario risk's `at` picks the first matching moment that involves an AI-assisted side
   - `risks.js`: the home band, the Risks screen and the injection deep dive, with their wording. Keep it in step with `docs/ai-risks.md`
-  - `agent-view.js`: "Inside the agent", showing one agent or a team of specialists
+  - `agent-view.js`: "Inside the agent", showing one agent or a team of specialists, with "Reads untrusted text" on steps that read attacker-writable data
   - `panel.js`, `diagram.js`, `pipeline.js`, `summary.js`, `params.js`, `routing-info.js`: analyst view pieces
 - `scenarios/*.json`: scenario data
   - **Always present:** attacker events, detection rules (each with a `plain` name), `labels` (all scenario-specific wording), variants, and `pipelineDemo` (the event "Inside the pipeline" walks through)
   - **Optional:** `paramOverrides`, `defaultPreset`, `noise` (an alert storm), `hunt` (the scheduled sweep), and per-rule `autoContain`
+  - **AI risks:** `risks`, the verdict's "What could go wrong here" items (`group`, `ref`, `title`, `text`, `guard`, and optionally `at` and `cue` for a caption link). A variant can carry its own `risks`. Keep them in step with the per-story section of `docs/ai-risks.md`
 - `scenarios/index.json`: the scenario list for the analyst view's dropdown
 - `vendor/fonts/`: the Figtree woff2 font and its SIL Open Font License
 - `docs/`:
@@ -59,7 +60,7 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 
 ## Adding a scenario
 
-1. Write `scenarios/<id>.json`, including the full `labels` set (copy the keys from an existing scenario), a `plain` name for every rule, and a `pipelineDemo` for the attacker's key event.
+1. Write `scenarios/<id>.json`, including the full `labels` set (copy the keys from an existing scenario), a `plain` name for every rule, a `pipelineDemo` for the attacker's key event, and a `risks` list (also added to `docs/ai-risks.md`).
 2. Add it to `scenarios/index.json`.
 3. Add a story to `js/stories.js` with team names. If it has more than one comparison, give each a `chapter` and a `teaser`.
 4. Write `docs/scenarios/<id>.md` with engine-output results.

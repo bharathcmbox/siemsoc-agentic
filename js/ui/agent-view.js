@@ -23,11 +23,13 @@ function classify(e) {
   if (e.lane === 'outcome' && /agent, approved/.test(e.text)) return { role: 'response', touch: 'Action (approved)' };
   if (e.lane !== 'agent') return null;
   const t = e.title;
-  if (/triages|links|storm/i.test(t)) return { role: 'triage', touch: 'Read: alert and recent activity' };
+  // untrusted: the step reads logs, emails or files that the attacker may
+  // have written. That text is data, never instructions (docs/ai-risks.md).
+  if (/triages|links|storm/i.test(t)) return { role: 'triage', touch: 'Read: alert and recent activity', untrusted: true };
   if (/asks for approval/i.test(t)) return { role: 'response', touch: 'Proposal; no action yet' };
   if (/report/i.test(t)) return { role: 'reporting', touch: 'Write: case report' };
-  if (e.query) return { role: 'investigation', touch: 'Search: cheap storage or data lake (billed)' };
-  return { role: 'investigation', touch: 'Read: logs across systems' };
+  if (e.query) return { role: 'investigation', touch: 'Search: cheap storage or data lake (billed)', untrusted: true };
+  return { role: 'investigation', touch: 'Read: logs across systems', untrusted: true };
 }
 
 let dialog;
@@ -40,7 +42,10 @@ function build() {
   document.body.append(dialog);
 }
 
-export function openAgentView(result, teamName) {
+const UNTRUSTED = 'Some of this text may have been written by the attacker. The agent must treat it as data to examine, never as instructions.';
+
+// onRisks: optional; opens the Risks screen at a topic.
+export function openAgentView(result, teamName, onRisks) {
   if (!dialog) build();
   const steps = result.timeline.map(e => ({ e, c: classify(e) })).filter(x => x.c);
   let mode = 'team';
@@ -68,7 +73,8 @@ export function openAgentView(result, teamName) {
       rows.push(h('li', {},
         h('span', { class: 't' }, clock12(e.t)),
         h('span', { class: 'role', style: `--role:${ROLES[role].color}` }, ROLES[role].name),
-        h('span', { class: 'what' }, h('b', {}, e.title), h('span', { class: 'touch' }, c.touch)),
+        h('span', { class: 'what' }, h('b', {}, e.title), h('span', { class: 'touch' }, c.touch),
+          c.untrusted ? h('span', { class: 'untrusted', title: UNTRUSTED }, 'Reads untrusted text') : null),
         h('span', { class: 'audit' }, `#${String(n).padStart(3, '0')}`)));
     }
     list.replaceChildren(...rows);
@@ -77,6 +83,8 @@ export function openAgentView(result, teamName) {
     perms.replaceChildren(
       h('h3', {}, 'Who can do what'),
       h('ul', {}, roles.map(r => h('li', {}, h('span', { class: 'role', style: `--role:${ROLES[r].color}` }, ROLES[r].name), ' ', ROLES[r].access))),
+      h('p', { class: 'untrusted-key' }, h('span', { class: 'untrusted' }, 'Reads untrusted text'), ' ', UNTRUSTED,
+        onRisks ? h('button', { type: 'button', class: 'cap-link risk', onclick: () => { dialog.close(); onRisks('injection'); } }, 'How attackers talk to the agent →') : null),
       h('h3', {}, mode === 'single' ? 'Strengths and weaknesses of one agent' : 'Strengths and weaknesses of a team'),
       mode === 'single'
         ? h('ul', {}, h('li', {}, 'One continuous line of reasoning, so nothing is lost between steps.'), h('li', {}, 'A simpler record to read afterwards.'), h('li', {}, 'One identity holds every permission, so a mistake or a manipulated agent can reach everything.'), h('li', {}, 'One very long working context; a generalist is average at each task.'))

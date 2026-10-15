@@ -31,7 +31,7 @@ const PARAM_DEFAULTS = defaultParams();
 
 const $ = id => document.getElementById(id);
 const state = {
-  screen: 'home', view: 'exec', riskTopic: null,
+  screen: 'home', view: 'exec', riskTopic: null, riskFrom: null,
   index: [], scenarios: {}, scenario: null, variant: 'default',
   sides: [cfg('index', 'traditional'), cfg('index', 'agentic')],
   results: [null, null], extras: [null, null], beats: [], names: null,
@@ -115,7 +115,8 @@ function runAll() {
   state.results = state.sides.map(c => simulate(scn, state.variant, c, state.params));
   state.extras = state.results.map((r, i) => computeExtras(scn, r, state.sides[i]));
   state.names = laneNames(scn.id, state.variant, state.sides, state.results.map(r => usd(r.metrics.cost.total)));
-  state.beats = buildBeats(state.results[0], state.results[1], state.names.map(n => n.ref));
+  state.risks = scn.variants.find(v => v.id === state.variant)?.risks ?? scn.risks ?? [];
+  state.beats = buildBeats(state.results[0], state.results[1], state.names.map(n => n.ref), state.risks);
   state.start = state.results[0].start;
   state.end = Math.max(state.results[0].end, state.results[1].end);
   const scrub = $('scrub');
@@ -139,7 +140,7 @@ function buildRace() {
   const story = hit?.story ?? storyFor(state.scenario.id, state.variant);
   race = renderRace($('exec'), {
     story, scenario: state.scenario, comparisonId: hit?.comparison.id ?? null,
-    names: state.names, A: state.results[0], B: state.results[1], beats: state.beats,
+    names: state.names, A: state.results[0], B: state.results[1], beats: state.beats, risks: state.risks,
     speed: state.speed, pauseAt: state.pauseAtBeats,
     onBack: goHome,
     onCompare: id => openStory(story.id, id),
@@ -147,8 +148,9 @@ function buildRace() {
     onSpeed: v => { state.speed = v; $('speed').value = String(v); },
     onPause: on => { state.pauseAtBeats = on; narrator.setPause(on); },
     onJump: dir => jumpBeat(dir),
-    onAgentView: i => openAgentView(state.results[i], state.names[i].ref),
+    onAgentView: i => openAgentView(state.results[i], state.names[i].ref, topic => openRisks(topic, true)),
     onPipeline: i => openPipeline(state.scenario, state.results[i], state.params, state.names[i].title),
+    onRisks: topic => openRisks(topic, true),
   });
 }
 
@@ -312,6 +314,18 @@ async function openStory(storyId, cmpId) {
   window.scrollTo(0, 0);
 }
 
+// Reopens the current comparison as it was, including a custom one.
+function storyReturn() {
+  const scenario = state.scenario.id, variant = state.variant, sides = state.sides.map(c => ({ ...c }));
+  return async () => {
+    state.screen = 'story';
+    state.view = 'exec';
+    showScreen();
+    await selectScenario(scenario, { variant, sides });
+    window.scrollTo(0, 0);
+  };
+}
+
 function goHome() {
   if (state.playing) pause();
   state.screen = 'home';
@@ -322,12 +336,15 @@ function goHome() {
 }
 
 // topic: null (all risks), a group id (scrolls to it), or 'injection' (the deep dive).
-function openRisks(topic = null) {
+// from: true when the reader came from a story, so they can go back to it.
+// Moving between risk pages keeps it; opening from home clears it.
+function openRisks(topic = null, from) {
   if (state.playing) pause();
+  if (from !== undefined) state.riskFrom = from ? { back: storyReturn() } : null;
   state.screen = 'risks';
   state.riskTopic = topic;
   race = null;
-  renderRisks($('risks'), { topic, onBack: goHome, onOpen: openRisks });
+  renderRisks($('risks'), { topic, onBack: goHome, onOpen: t => openRisks(t), from: state.riskFrom });
   showScreen();
   writeHash();
   const target = topic && topic !== 'injection' && document.getElementById(`r-${topic}`);
@@ -361,7 +378,7 @@ async function init() {
     renderThemeButton();
   });
   $('view-switch').addEventListener('click', () => setView(state.view === 'exec' ? 'analyst' : 'exec'));
-  renderHome($('home'), { onStory: id => openStory(id), onRisks: openRisks });
+  renderHome($('home'), { onStory: id => openStory(id), onRisks: t => openRisks(t, null) });
 
   state.index = await loadJson('scenarios/index.json');
   $('scenario').replaceChildren(...state.index.map(s => h('option', { value: s.id }, s.short)));
@@ -393,7 +410,7 @@ async function init() {
   });
 
   const hs = readHash();
-  if ('risks' in hs) return openRisks(hs.risks);
+  if ('risks' in hs) return openRisks(hs.risks, null);
   if (hs.story) return openStory(hs.story, hs.cmp);
   if (hs.s && state.index.some(s => s.id === hs.s)) {
     state.screen = 'story';

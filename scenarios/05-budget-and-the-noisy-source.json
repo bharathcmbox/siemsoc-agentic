@@ -304,6 +304,33 @@
       "label": "As scripted"
     }
   ],
+  "risks": [
+    {
+      "group": "judgment",
+      "ref": "1c",
+      "title": "\"No evidence\" means \"no data\"",
+      "text": "When firewall and DNS logs are cut to fit the budget, the agent can't see the malware calling home. \"No evidence\" here means \"no data\".",
+      "guard": "The agent reports which sources it lacks.",
+      "at": "blind",
+      "cue": "What does the agent say about logs it can't see?"
+    },
+    {
+      "group": "goals",
+      "ref": "2",
+      "title": "Saving money, missing the cause",
+      "text": "An agent tuned to keep search costs down skips the search that finds the root cause.",
+      "guard": "Measure attacks stopped, not money saved."
+    },
+    {
+      "group": "manipulation",
+      "ref": "5",
+      "title": "A file name written for the agent",
+      "text": "The attacker names the stolen-code archive \"nightly-backup-approved.zip\".",
+      "guard": "Names are evidence, not explanations, and the agent checks against the real backup schedule.",
+      "at": "triage",
+      "cue": "What if a file name lies?"
+    }
+  ],
   "pipelineDemo": {
     "source": "fw",
     "caption": "Jordan's laptop calling the C2 server at 08:53",

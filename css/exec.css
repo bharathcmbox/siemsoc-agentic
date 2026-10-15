@@ -173,13 +173,9 @@
 .verdict-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .verdict-actions .copied { font-size: 0.85rem; color: var(--good-ink); }
 .verdict-actions input { font-size: 0.8rem; color: var(--muted); background: var(--soft); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; min-width: 0; flex: 1 1 260px; }
-.more { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-@media (max-width: 760px) { .more { grid-template-columns: 1fr; } }
-.more details { background: var(--soft); border-radius: var(--radius); padding: 14px 16px; }
-.more summary { cursor: pointer; font-weight: 600; }
-.more ul, .more ol { margin: 10px 0 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 0.93rem; }
-.more li b { font-weight: 600; }
-.more li span { color: var(--muted); }
+.v-questions { background: var(--soft); border-radius: var(--radius); padding: 14px 16px; }
+.v-questions summary { cursor: pointer; font-weight: 600; }
+.v-questions ol { margin: 10px 0 0; padding-left: 1.2em; display: grid; gap: 8px; font-size: 0.93rem; }
 .x-foot { margin-top: 26px; color: var(--muted); font-size: 0.8rem; display: grid; gap: 10px; }
 .glossary { font-size: 0.88rem; color: var(--ink); }
 .glossary summary { cursor: pointer; color: var(--muted); }
@@ -204,6 +200,9 @@
 .agent-perms h3 { font-size: 0.95rem; margin: 0 0 6px; }
 .agent-perms h3 + ul { margin-bottom: 14px; }
 .agent-perms ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; font-size: 0.85rem; }
+.untrusted { justify-self: start; margin-top: 3px; font-size: 0.7rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; color: var(--detect); background: var(--detect-soft); white-space: nowrap; }
+.untrusted-key { margin: 0 0 14px; font-size: 0.82rem; color: var(--muted); display: grid; gap: 6px; }
+.untrusted-key .cap-link { justify-self: start; }
 @media (max-width: 520px) { .agent-steps li { grid-template-columns: 1fr auto; } .agent-steps .t { grid-column: 1 / -1; } }
 
 /* ---------- analyst view wrapper ---------- */

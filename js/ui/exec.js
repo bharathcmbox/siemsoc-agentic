@@ -1,6 +1,6 @@
 // Executive view: story picker and the race view (two lanes on one clock,
 // a narrated caption, a scoreboard, and the verdict).
-import { renderRiskBand } from './risks.js';
+import { renderRiskBand, GROUPS, riskIcon } from './risks.js';
 import { h, usd } from './dom.js';
 import { STORIES } from '../stories.js';
 import { clock12 } from './narrator.js';
@@ -30,15 +30,6 @@ export const icon = name => svg(ICONS[name]);
 const hour12 = t => { const hh = Math.floor((((t % 1440) + 1440) % 1440) / 60); return `${hh % 12 || 12} ${hh >= 12 ? 'pm' : 'am'}`; };
 const short12 = t => clock12(t).replace(' (next day)', '');
 const fmtMins = n => (n >= 120 ? `${Math.round(n / 6) / 10} h` : `${Math.round(n)} min`);
-
-const RISKS = [
-  ['Confident but wrong conclusions', 'Every claim the agent makes should link to the evidence, so a person can check it.'],
-  ['Closing a real attack as harmless', "Spot-check the cases it closes, and don't let it close high-risk ones on its own."],
-  ['Being tricked by text hidden in logs', 'Attackers can plant instructions in data the agent reads. Treat log content as data, limit what the agent can do, and require approval for big actions.'],
-  ['Runaway search costs', 'Searching cheap storage costs money per search. Set a spending limit for each investigation.'],
-  ['Too much power', "Give it only the permissions it needs. A person approves anything that locks out accounts or shuts down systems."],
-  ['Hard to audit afterwards', 'Keep a step-by-step record of every search and action, so you can replay why something was done.'],
-];
 
 const QUESTIONS = [
   'Which actions can the AI take without a person approving? Can we set that per action and per system?',
@@ -130,7 +121,7 @@ export function renderRace(root, ctx) {
   const count = h('div', { class: 'count' });
   const lines = h('div', { 'aria-live': 'polite' });
   const capLinks = h('div', { class: 'cap-links' });
-  const openView = l => (l.kind === 'agent' ? ctx.onAgentView(l.side) : ctx.onPipeline(l.side));
+  const openView = l => (l.kind === 'agent' ? ctx.onAgentView(l.side) : l.kind === 'risk' ? ctx.onRisks(riskTopic(l.topic)) : ctx.onPipeline(l.side));
   const prev = h('button', { class: 'cap-step', type: 'button', 'aria-label': 'Previous moment', onclick: () => ctx.onJump(-1) }, icon('prev'));
   const next = h('button', { class: 'cap-step', type: 'button', 'aria-label': 'Next moment', onclick: () => ctx.onJump(1) }, icon('next'));
   const now = h('div', { class: 'now' });
@@ -273,13 +264,13 @@ export function renderRace(root, ctx) {
         lines.replaceChildren(...(idx < 0
           ? [h('p', { class: 'line fade' }, 'Two teams, one attack. Press play, and this space explains each moment as it happens.')]
           : beats[idx].lines.map(l => h('p', { class: 'line fade' }, highlight(l)))));
-        capLinks.replaceChildren(...(idx < 0 ? [] : beats[idx].links.map(l => h('button', { type: 'button', class: 'cap-link', onclick: () => openView(l) }, `${l.label} →`))));
+        capLinks.replaceChildren(...(idx < 0 ? [] : beats[idx].links.map(l => h('button', { type: 'button', class: l.kind === 'risk' ? 'cap-link risk' : 'cap-link', onclick: () => openView(l) }, `${l.label} →`))));
       }
       prev.disabled = idx <= 0;
       next.disabled = idx >= beats.length - 1;
 
       renderScores(scores, A, B, names, clock, end, L);
-      if (done && !verdictShown) { renderVerdict(verdict, A, B, names, L, ctx.onAgentView); verdict.hidden = false; verdictShown = true; }
+      if (done && !verdictShown) { renderVerdict(verdict, A, B, names, L, ctx); verdict.hidden = false; verdictShown = true; }
       if (!done && verdictShown) { verdict.hidden = true; verdictShown = false; }
     },
   };
@@ -322,9 +313,10 @@ function renderScores(root, A, B, names, clock, end, L) {
   );
 }
 
-function renderVerdict(root, A, B, names, L, onAgentView) {
+function renderVerdict(root, A, B, names, L, { onAgentView, onRisks, risks = [] }) {
   const a = A.metrics, b = B.metrics;
   const [nA, nB] = names.map(n => n.ref);
+  const agentic = [A, B].some(R => R.config.model === 'agentic');
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
   const list = xs => (xs.length > 1 ? `${xs.slice(0, -1).join(', ')} and ${xs.at(-1)}` : xs[0]);
   const out = [];
@@ -358,12 +350,35 @@ function renderVerdict(root, A, B, names, L, onAgentView) {
     h('h2', {}, 'The verdict'),
     h('ol', {}, out.map(s => h('li', {}, s))),
     h('div', { class: 'verdict-actions' }, h('button', { class: 'pill-btn', type: 'button', onclick: copy }, 'Copy link to this comparison'), linkBox, copied),
-    [A, B].some(R => R.config.model === 'agentic') ? h('div', { class: 'verdict-actions' },
+    agentic ? h('div', { class: 'verdict-actions' },
       h('button', { class: 'pill-btn', type: 'button', onclick: () => onAgentView(A.config.model === 'agentic' ? 0 : 1) }, 'How is the AI built? Look inside the agent →')) : null,
-    h('div', { class: 'more' },
-      h('details', {}, h('summary', {}, 'What AI agents can get wrong, and the guardrails'),
-        h('ul', {}, RISKS.map(([r, g]) => h('li', {}, h('b', {}, `${r}. `), h('span', {}, g))))),
-      h('details', {}, h('summary', {}, 'Questions to ask a vendor'),
-        h('ol', {}, QUESTIONS.map(q => h('li', {}, q))))),
+    agentic && risks.length ? storyRisks(risks, onRisks) : null,
+    h('details', { class: 'v-questions' }, h('summary', {}, 'Questions to ask a vendor'),
+      h('ol', {}, QUESTIONS.map(q => h('li', {}, q)))),
   );
+}
+
+// Manipulation links go straight to the deep dive; other groups to their section.
+const riskTopic = group => (group === 'manipulation' ? 'injection' : group);
+
+// "What could go wrong here": the story's own risks (from the scenario file),
+// each with its guardrail and a link to its group on the Risks screen.
+function storyRisks(risks, onRisks) {
+  const group = id => GROUPS.find(g => g.id === id);
+  return h('section', { class: 'v-risks', 'aria-label': 'What could go wrong here' },
+    h('div', { class: 'v-risks-head' },
+      h('h3', {}, 'What could go wrong here'),
+      h('p', {}, 'None of this happens in the race above. These are ways an AI-assisted team could fail in this story, and the guardrail that catches each.')),
+    h('div', { class: 'v-risk-grid' }, risks.map(r => {
+      const g = group(r.group);
+      const deep = r.group === 'manipulation';
+      return h('article', { class: 'v-risk' },
+        h('span', { class: 'v-risk-tag' }, riskIcon(g.icon), `${g.n} · ${g.title}`),
+        h('b', {}, r.title),
+        h('p', {}, r.text),
+        h('p', { class: 'v-guard' }, h('span', {}, 'Guardrail'), r.guard),
+        h('button', { type: 'button', class: 'cap-link', onclick: () => onRisks(riskTopic(r.group)) },
+          deep ? 'How attackers talk to the agent →' : `More on ${g.title.toLowerCase()} →`));
+    })),
+    h('button', { type: 'button', class: 'cap-link', onclick: () => onRisks(null) }, 'Everything AI agents can get wrong, and the guardrails →'));
 }

@@ -53,22 +53,32 @@ function work(R, t) {
 }
 
 // names: how to refer to each team mid-sentence, e.g. ["today's team", 'the AI-assisted team'].
-export function buildBeats(A, B, names = ['Side A', 'Side B']) {
+// risks: the story's "What could go wrong here" items. Each one with an `at`
+// tag becomes a caption link at the first matching moment that involves an
+// AI-assisted team.
+export function buildBeats(A, B, names = ['Side A', 'Side B'], risks = []) {
   const R = [A, B];
   const N = names;
   const raw = [];
   // link: optional pointer to a deeper view, { kind: 'agent' | 'pipeline', side: 0 | 1 }.
-  const add = (t, text, link) => raw.push({ t, text, link });
+  // tag / agent: which kind of moment this is, and whether it is about an
+  // AI-assisted side (null when it is about both).
+  let tag = null;
+  let agent = null;
+  const add = (t, text, link) => raw.push({ t, text, link, tag, agent });
+  const sideTag = (name, r) => { tag = name; agent = r.config.model === 'agentic'; };
   const LOGS = side => ({ kind: 'pipeline', side, label: 'See where these logs went' });
   const other = i => R[1 - i];
   const sameData = A.config.arch === B.config.arch && A.config.routing === B.config.routing;
 
   // 1. Attack starts.
+  tag = 'begin';
   const t0 = A.metrics.firstMaliciousAt;
   const first = A.timeline.find(e => e.t === t0 && e.lane === 'attacker');
   if (first) add(t0, `The attack begins: ${first.title}. Neither team has any reason to notice yet.`);
 
   // 1b. Alert storm.
+  tag = 'storm';
   const st = A.timeline.find(e => e.storm);
   if (st) {
     const how = r => (r.config.model === 'agentic'
@@ -78,6 +88,7 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   }
 
   // 2. Checks that stay silent.
+  tag = 'silent';
   const supp = A.timeline.find(e => e.missed && !e.blindSpot);
   if (supp && B.timeline.some(e => e.missed && !e.blindSpot && e.rule === supp.rule)) {
     add(supp.t, `${cap(supp.rulePlain)} stays quiet on both sides. ${supp.text}`);
@@ -88,9 +99,11 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   R.forEach((r, i) => {
     const b = r.timeline.find(e => e.blindSpot);
     if (!b) return;
+    sideTag('blind', r);
     const o = other(i);
     const oBlind = o.timeline.find(e => e.blindSpot && e.rule === b.rule);
     if (oBlind && oBlind.dropped === b.dropped) {
+      agent = null;
       if (i === 0) add(b.t, `On both sides, ${b.rulePlain} can't work: ${why(b)}.${b.dropped ? '' : ' The best early clue is being kept, but nobody is watching it.'}`, LOGS(0));
       return;
     }
@@ -99,6 +112,7 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   });
 
   // 3. First alerts.
+  tag = 'alert'; agent = null;
   const alertEntry = r => r.timeline.find(e => e.lane === 'detect' && e.title.startsWith('Alert:'));
   const fa = R.map(r => r.metrics.firstAlertAt);
   const how = e => ((e.badges ?? []).includes('Scheduled sweep') ? ' It came from the nightly scheduled search of stored data, not in real time.'
@@ -110,6 +124,7 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   } else {
     R.forEach((r, i) => {
       if (fa[i] == null) return;
+      sideTag('alert', r);
       const e = alertEntry(r);
       add(fa[i], `${N[i]} gets its first alert, from ${e.rulePlain}.${how(e)} ${N[1 - i]}: ${statusAt(other(i), fa[i])}.`,
         (e.badges ?? []).includes('Promoted by routing') ? { kind: 'pipeline', side: i, label: 'See how smart routing works' } : undefined);
@@ -120,6 +135,7 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   R.forEach((r, i) => {
     const e = r.timeline.find(x => x.phase === 'triage');
     if (!e || r.metrics.firstAlertAt == null) return;
+    sideTag('triage', r);
     const wait = e.waited ?? e.t - r.metrics.firstAlertAt;
     const firstRule = alertEntry(r)?.rule;
     const text = r.config.model === 'agentic'
@@ -134,6 +150,7 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   R.forEach((r, i) => {
     const e = r.timeline.find(x => x.phase === 'awaiting-approval' || x.phase === 'containing');
     if (!e || (r.metrics.containedAt != null && r.metrics.containedAt <= e.t)) return;
+    sideTag('approval', r);
     const text = e.phase === 'awaiting-approval'
       ? `${poss(N[i])} AI agent has gathered the evidence and asks a person to approve stopping the attacker. Big actions always wait for a human.`
       : `${poss(N[i])} analysts have enough evidence and start the automated steps to stop the attacker.`;
@@ -144,6 +161,7 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   R.forEach((r, i) => {
     const t = r.metrics.containedAt;
     if (t == null) return;
+    sideTag('stopped', r);
     const o = other(i);
     const oc = o.metrics.containedAt != null && o.metrics.containedAt <= t;
     const left = r.metrics.compromisedDetail.filter(c => c.at <= t && (c.revokedAt == null || c.revokedAt > t)).map(c => c.name);
@@ -156,6 +174,7 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   });
 
   // 7. Attacker steps that happen on one side but were prevented on the other.
+  tag = 'prevented'; agent = null;
   const ids = [...new Set(A.timeline.filter(e => e.eventId).map(e => e.eventId))];
   let ordinary = 0;
   for (const id of ids) {
@@ -174,6 +193,7 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   const rc = R.map(r => r.metrics.rootCauseAt);
   R.forEach((r, i) => {
     if (rc[i] == null || rc[i] === rc[1 - i] || rc[i] === r.metrics.firstAlertAt) return;
+    sideTag('rootcause', r);
     const o = rc[1 - i];
     add(rc[i], `${N[i]} now knows how the attack started (the ${r.labels.indicatorKind}).${o != null && o < rc[i] ? ` ${N[1 - i]} worked that out ${fmtDuration(rc[i] - o)} earlier.` : ''}`);
   });
@@ -182,11 +202,13 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   R.forEach((r, i) => {
     const t = r.metrics.caseClosedAt;
     if (t == null) return;
+    sideTag('closed', r);
     const fm = n => (n >= 120 ? `${Math.round(n / 6) / 10} hours` : `${n} min`);
     add(t, `${N[i]} closes the case. People-time spent: ${fm(work(r, t))} for ${N[i]}, ${fm(work(other(i), t))} so far for ${N[1 - i]}.`);
   });
 
   // 10. End.
+  tag = 'end'; agent = null;
   add(Math.max(A.end, B.end), "That's the end of the story. The scoreboard and verdict below compare how the two teams did.");
 
   raw.sort((a, b) => a.t - b.t);
@@ -195,9 +217,19 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
     // Team references are lower-case noun phrases ("the AI-assisted team"); capitalize sentence starts.
     const text = to12(r.text).replace(/^[a-z]/, c => c.toUpperCase()).replace(/([.!?] )([a-z])/g, (_, p, c) => p + c.toUpperCase());
     const last = beats[beats.length - 1];
-    if (last && last.t === r.t) { last.lines.push(text); if (r.link && !last.links.some(l => l.kind === r.link.kind)) last.links.push(r.link); }
-    else beats.push({ t: r.t, lines: [text], links: r.link ? [r.link] : [] });
+    if (last && last.t === r.t) { last.lines.push(text); if (r.link && !last.links.some(l => l.kind === r.link.kind)) last.links.push(r.link); last.tags.push(r); }
+    else beats.push({ t: r.t, lines: [text], links: r.link ? [r.link] : [], tags: [r] });
   }
+
+  // Risk links: only when at least one side is AI-assisted, and only at a
+  // moment that involves that side. One risk link per moment.
+  if (R.some(r => r.config.model === 'agentic')) {
+    for (const k of risks.filter(x => x.at && x.cue)) {
+      const b = beats.find(x => !x.links.some(l => l.kind === 'risk') && x.tags.some(g => g.tag === k.at && g.agent !== false));
+      if (b) b.links.push({ kind: 'risk', topic: k.group, label: k.cue });
+    }
+  }
+  beats.forEach(b => delete b.tags);
   return beats;
 }
 
