@@ -78,6 +78,7 @@ With defaults, that gives about **$42,000** (index-at-ingest), **$12,900** (tier
 | Queue wait before an alert is picked up (high severity) | 20 min | 5 – 120 min | Illustrative |
 | Queue wait (medium severity, business hours) | 90 min | 15 – 480 min | Illustrative |
 | Off-hours queue wait multiplier | 4× | 1 – 8× | Illustrative |
+| Tier-1 analysts on shift (business hours; off hours divides capacity by the off-hours multiplier) | 4 | 1 – 20 | Illustrative |
 | Tier-1 triage time per alert | 10 min | 3 – 30 min | Illustrative |
 | Wait for Tier-2 to pick up an escalation | 20 min | 5 – 120 min | Illustrative |
 | Tier-2 investigation until containment decision, clear-cut alert | 45 min | 15 – 240 min | Illustrative |
@@ -100,6 +101,7 @@ Business hours are 08:00–18:00.
 | Agent triage time per alert | 2 min | 0.5 – 5 min | Illustrative |
 | Agent investigation time (hot data only) | 8 min | 3 – 20 min | Illustrative |
 | Human review per approval or report | 5 min | 1 – 15 min | Illustrative |
+| Share of auto-closed alerts a person spot-checks (1 min each) | 5% | 0 – 50% | Illustrative |
 | Time for approved actions to execute (fixed) | 2 min | | Illustrative |
 | Human approval wait (business hours) | 10 min | 1 – 60 min | Illustrative |
 | Human approval wait (off hours, on-call) | 30 min | 5 – 120 min | Illustrative |

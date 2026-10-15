@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A personal study project building an **Agentic SOC simulator**: an interactive web app that shows executives and other readers how an Agentic SOC differs from a traditional one, and how ingestion pipelines, SIEM, and SOAR fit together. `docs/PLAN.md` is the source of truth for scope and phases.
 
-Current phase: **Phase 4 built** (executive redesign: stories, race view, verdict; detailed view behind "Analyst view"). Next: Phase 5.
+Current phase: **Phase 5 built** (alert storm, ransomware at 2 a.m., "Inside the agent"). All planned phases are done.
 
 ## Layout
 
@@ -18,10 +18,11 @@ Current phase: **Phase 4 built** (executive redesign: stories, race view, verdic
 - `css/theme.css` (palette tokens for both themes, dark default, bundled font), `css/exec.css` (executive view), `css/analyst.css` (analyst view)
 - `js/stories.js` — the four executive stories, their comparisons, and plain-language team names
 - `js/ui/exec.js` — home screen, race view, scoreboard, verdict, glossary
+- `js/ui/agent-view.js` — "Inside the agent": the agentic side's steps as one agent or a team of specialists
 - `vendor/fonts/` — Figtree woff2 and its SIL Open Font License
 - `js/engine/` — `simulate.js` (discrete-event simulation of one SOC configuration), `cost.js` (routing + monthly cost), `assumptions.js` (every parameter, mirrored in `docs/assumptions.md`)
 - `js/ui/` — side panel, architecture diagram (`diagram.js`), pipeline walk-through dialog (`pipeline.js`), narrator (comparative beats built from both results), executive summary, assumption sliders, routing info dialog; `js/main.js` wires state, playback, presets, and the shareable URL hash
-- `scenarios/*.json` — scenario data: attacker events, detection rules, variants, `labels` (all scenario-specific wording the engine and UI use), optional `paramOverrides`, `defaultPreset`, and `pipelineDemo`
+- `scenarios/*.json` — scenario data: attacker events, detection rules, variants, `labels` (all scenario-specific wording the engine and UI use), optional `paramOverrides`, `defaultPreset`, `pipelineDemo`, `noise` (an alert storm), and per-rule `autoContain`
 - `tests/run-all.mjs` — dev-only check (needs Node): `node tests/run-all.mjs` prints metrics for every scenario × configuration; `node tests/run-all.mjs --timeline <scenarioId> <variant> <arch> <model> <on|off>` prints one timeline; `node tests/narrate.mjs <scenarioId> <variant> <arch-model-0|1> <arch-model-0|1>` prints the narrator beats for one comparison
 
 ## Constraints

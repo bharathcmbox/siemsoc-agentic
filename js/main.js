@@ -12,6 +12,7 @@ import { openRoutingInfo, openRoutingInfoFirstTime } from './ui/routing-info.js'
 import { h, usd } from './ui/dom.js';
 import { buildBeats, createNarrator, clock12 } from './ui/narrator.js';
 import { openPipeline } from './ui/pipeline.js';
+import { openAgentView } from './ui/agent-view.js';
 import { renderHome, renderRace, icon } from './ui/exec.js';
 import { STORIES, findStory, storyFor, laneNames } from './stories.js';
 
@@ -141,6 +142,7 @@ function buildRace() {
     onSpeed: v => { state.speed = v; $('speed').value = String(v); },
     onPause: on => { state.pauseAtBeats = on; narrator.setPause(on); },
     onJump: dir => jumpBeat(dir),
+    onAgentView: i => openAgentView(state.results[i], state.names[i].ref),
   });
 }
 
@@ -233,8 +235,8 @@ function jumpBeat(dir) {
 
 // ---------- setup ----------
 const panels = [
-  createPanel($('side-a'), 'A', { onConfig: c => onSideConfig(0, c), onInfo: showInfo, onPipeline: showPipeline }),
-  createPanel($('side-b'), 'B', { onConfig: c => onSideConfig(1, c), onInfo: showInfo, onPipeline: showPipeline }),
+  createPanel($('side-a'), 'A', { onConfig: c => onSideConfig(0, c), onInfo: showInfo, onPipeline: showPipeline, onAgent: showAgent }),
+  createPanel($('side-b'), 'B', { onConfig: c => onSideConfig(1, c), onInfo: showInfo, onPipeline: showPipeline, onAgent: showAgent }),
 ];
 
 const narrator = createNarrator($('narrator'), {
@@ -253,6 +255,7 @@ function routingInfo() {
   return { share: `${state.params.promoteShare}%`, cost: usd(c.promoted) };
 }
 function showInfo() { openRoutingInfo(routingInfo()); }
+function showAgent(name) { const i = name === 'A' ? 0 : 1; openAgentView(state.results[i], state.names[i].ref); }
 function showPipeline(name) {
   const i = name === 'A' ? 0 : 1;
   openPipeline(state.scenario, state.results[i], state.params, `Side ${name}: ${state.names[i].title}`);

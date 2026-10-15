@@ -12,6 +12,7 @@ export const ICONS = {
   storage: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="2.6"/><path d="M5 6v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6V6"/><path d="M5 12v6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6v-6"/></svg>',
   quiet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c5 0 8.5 4.5 9.5 7a13 13 0 0 1-2.6 3.8M6.6 6.6C4.6 8 3.2 10 2.5 12c1 2.5 4.5 7 9.5 7 1.8 0 3.4-.6 4.8-1.4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
   budget: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10"/><path d="M5 8h14"/><path d="m5 8-3 6a3 3 0 0 0 6 0Z"/><path d="m19 8-3 6a3 3 0 0 0 6 0Z"/></svg>',
+  storm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/><path d="M2 5l2 1M22 5l-2 1"/></svg>',
   clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
   moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg>',
@@ -25,6 +26,7 @@ export const icon = name => svg(ICONS[name]);
 
 const hour12 = t => { const hh = Math.floor((((t % 1440) + 1440) % 1440) / 60); return `${hh % 12 || 12} ${hh >= 12 ? 'pm' : 'am'}`; };
 const short12 = t => clock12(t).replace(' (next day)', '');
+const fmtMins = n => (n >= 120 ? `${Math.round(n / 6) / 10} h` : `${Math.round(n)} min`);
 
 const RISKS = [
   ['Confident but wrong conclusions', 'Every claim the agent makes should link to the evidence, so a person can check it.'],
@@ -230,7 +232,7 @@ export function renderRace(root, ctx) {
       next.disabled = idx >= beats.length - 1;
 
       renderScores(scores, A, B, names, clock, end, L);
-      if (done && !verdictShown) { renderVerdict(verdict, A, B, names, L); verdict.hidden = false; verdictShown = true; }
+      if (done && !verdictShown) { renderVerdict(verdict, A, B, names, L, ctx.onAgentView); verdict.hidden = false; verdictShown = true; }
       if (!done && verdictShown) { verdict.hidden = true; verdictShown = false; }
     },
   };
@@ -267,13 +269,13 @@ function renderScores(root, A, B, names, clock, end, L) {
       return hit ? { text: 'Yes', cls: 'yes', n: 1 } : done ? { text: 'No', cls: 'no', n: 0 } : { text: 'Not so far', cls: 'pending', n: 0 };
     }, lower, () => `Their goal: ${L.objectiveStatus}`),
     card('Analyst time so far', (m, R) => {
-      const mins = R.work.filter(w => w.t <= clock).reduce((s, w) => s + w.min, 0);
-      return { text: `${Math.round(mins)} min`, n: mins, cost: m.cost.total };
+      const used = R.work.filter(w => w.t <= clock).reduce((s, w) => s + w.min, 0);
+      return { text: fmtMins(used), n: used, cost: m.cost.total };
     }, () => -1, vals => `Data cost per month: ${usd(vals[0].cost)} vs ${usd(vals[1].cost)}`),
   );
 }
 
-function renderVerdict(root, A, B, names, L) {
+function renderVerdict(root, A, B, names, L, onAgentView) {
   const a = A.metrics, b = B.metrics;
   const [nA, nB] = names.map(n => n.ref);
   const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -296,7 +298,7 @@ function renderVerdict(root, A, B, names, L) {
     const [w, wn] = a.uncontained.length > b.uncontained.length ? [a, nA] : [b, nB];
     out.push(`${cap(wn)} never found ${list(w.uncontained)}, so the attacker still has a way back in.`);
   }
-  out.push(`Analyst time: ${Math.round(a.analystMin)} min vs ${Math.round(b.analystMin)} min. Data cost: ${usd(a.cost.total)} vs ${usd(b.cost.total)} a month.`);
+  out.push(`Analyst time: ${fmtMins(a.analystMin)} vs ${fmtMins(b.analystMin)}. Data cost: ${usd(a.cost.total)} vs ${usd(b.cost.total)} a month.`);
 
   const linkBox = h('input', { type: 'text', readonly: true, value: location.href, 'aria-label': 'Link to this comparison' });
   const copied = h('span', { class: 'copied', 'aria-live': 'polite' });
@@ -309,6 +311,8 @@ function renderVerdict(root, A, B, names, L) {
     h('h2', {}, 'The verdict'),
     h('ol', {}, out.map(s => h('li', {}, s))),
     h('div', { class: 'verdict-actions' }, h('button', { class: 'pill-btn', type: 'button', onclick: copy }, 'Copy link to this comparison'), linkBox, copied),
+    [A, B].some(R => R.config.model === 'agentic') ? h('div', { class: 'verdict-actions' },
+      h('button', { class: 'pill-btn', type: 'button', onclick: () => onAgentView(A.config.model === 'agentic' ? 0 : 1) }, 'How is the AI built? Look inside the agent →')) : null,
     h('div', { class: 'more' },
       h('details', {}, h('summary', {}, 'What AI agents can get wrong, and the guardrails'),
         h('ul', {}, RISKS.map(([r, g]) => h('li', {}, h('b', {}, `${r}. `), h('span', {}, g))))),
