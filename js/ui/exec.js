@@ -67,8 +67,8 @@ export function renderHome(root, { onStory }) {
   root.replaceChildren(
     h('section', { class: 'hero' },
       h('div', { class: 'hero-main' },
-        h('h1', {}, "See how an AI-assisted security team handles the same attack as today's team."),
-        h('p', {}, "Pick a story. Two teams face the same attack, side by side, on the same clock. You'll see when each one notices, when each one stops the attacker, and what it costs.")),
+        h('h1', {}, "Put AI agents to the test against today's security team."),
+        h('p', {}, 'Pick an attack. Two teams face it side by side, on the same clock. Watch who spots it first, who stops it, and what it costs.')),
       h('div', { class: 'hero-how' },
         h('p', { class: 'how' }, icon('clock'), 'Each story takes a few minutes. Pause whenever you like; the scoreboard keeps up.'),
         h('p', { class: 'how' }, icon('agent'), 'Inside every story: see how the AI agent works, and how a log line becomes evidence.')),
