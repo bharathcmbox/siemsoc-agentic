@@ -171,8 +171,8 @@ index.html            entry point
    - **"Inside the agent":** the agentic side's real steps shown as one generalist agent or a team of specialists (triage, investigation, response, reporting) with orchestrator handoffs, permissions, and a numbered record. Opened from the verdict or the Analyst view.
    - **Engine:** every alert queues on its own (the first one picked up starts the case); alert-storm capacity model; rules can trigger automatic isolation.
    - **Six stories** on the home screen.
-6. **What AI agents can get wrong:** *In progress.* All wording lives in `docs/ai-risks.md`, reviewed before any UI work. The stance is neutral, with today's-team equivalents where they exist.
+6. **What AI agents can get wrong:** *In progress (6a and 6b built).* All wording lives in `docs/ai-risks.md`, reviewed before any UI work. The stance is neutral, with today's-team equivalents where they exist.
    - **6a, content:** five risk groups (bad judgment, misaligned goals, too much power, runaway resources, manipulation) plus accountability and "when the guardrails get it wrong", each as what goes wrong / what it looks like / the guardrail / a vendor question; a prompt-injection deep dive; per-story risks.
-   - **6b, main page:** a "Before you trust an AI agent" band on the home screen; a Risks screen (`#risks`); the injection deep dive as its own screen (`#risks/injection`) that reuses the pipeline walk-through.
+   - **6b, main page:** *Built.* a "Before you trust an AI agent" band on the home screen; a Risks screen (`#risks`); the injection deep dive as its own screen (`#risks/injection`) that reuses the pipeline walk-through.
    - **6c, stories:** a "What could go wrong here" section in each verdict (from a `risks` list in each scenario file), caption links at the relevant moments, and "reads untrusted text" badges in "Inside the agent". No engine numbers change.
    - **6d, playable:** "What if the attacker targets the agent?" as a way to watch the phishing story: the same AI-assisted team without and with the harness. Needs engine support for the injected event and the harness checks.

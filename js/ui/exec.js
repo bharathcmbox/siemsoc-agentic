@@ -1,5 +1,6 @@
 // Executive view: story picker and the race view (two lanes on one clock,
 // a narrated caption, a scoreboard, and the verdict).
+import { renderRiskBand } from './risks.js';
 import { h, usd } from './dom.js';
 import { STORIES } from '../stories.js';
 import { clock12 } from './narrator.js';
@@ -63,7 +64,7 @@ const GLOSSARY = [
 ];
 
 // ---------------- home ----------------
-export function renderHome(root, { onStory }) {
+export function renderHome(root, { onStory, onRisks }) {
   root.replaceChildren(
     h('section', { class: 'hero' },
       h('div', { class: 'hero-main' },
@@ -82,6 +83,7 @@ export function renderHome(root, { onStory }) {
           h('span', {}, s.comparisons.length > 1 ? `${s.comparisons.length} ways to watch` : s.comparisons[0].label),
           h('span', { class: 'go' }, 'Watch →')),
       ))),
+    renderRiskBand({ onOpen: onRisks }),
     h('p', { class: 'home-foot' },
       h('span', {}, 'All companies, people and figures are fictional or illustrative.'),
       h('span', {}, 'Want the details? Open any story and switch on Analyst view.')),
