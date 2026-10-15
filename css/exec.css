@@ -112,6 +112,28 @@
 @media (prefers-reduced-motion: reduce) { .caption .fade { animation: none; } }
 @media (max-width: 520px) { .caption { grid-template-columns: 1fr; } .caption .cap-step { display: none; } .caption .line { font-size: 1.05rem; } }
 
+/* ---------- explore cards and caption links ---------- */
+.explore { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 18px; }
+.explore-card {
+  display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; text-align: left;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px;
+  transition: border-color .2s;
+}
+.explore-card[role="button"] { cursor: pointer; }
+.explore-card[role="button"]:hover { border-color: var(--a); }
+.explore-card .ic { width: 40px; height: 40px; border-radius: 12px; background: var(--a-soft); color: var(--a); display: grid; place-items: center; }
+.explore-card .ic svg { width: 22px; height: 22px; }
+.explore-text { display: grid; gap: 4px; min-width: 0; }
+.explore-text b { font-size: 1.02rem; }
+.explore-text > span { color: var(--muted); font-size: 0.9rem; }
+.explore-sides { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.cap-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.cap-link {
+  border: 1px solid var(--a); background: var(--a-soft); color: var(--a); border-radius: 999px;
+  padding: 4px 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.cap-link:hover { background: var(--a); color: var(--on-accent); }
+
 /* ---------- scoreboard ---------- */
 .score-title { margin: 30px 0 12px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .score-title h2 { font-size: 1.25rem; }

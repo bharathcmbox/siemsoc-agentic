@@ -13,6 +13,8 @@ export const ICONS = {
   quiet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.4 10.4 0 0 1 12 5c5 0 8.5 4.5 9.5 7a13 13 0 0 1-2.6 3.8M6.6 6.6C4.6 8 3.2 10 2.5 12c1 2.5 4.5 7 9.5 7 1.8 0 3.4-.6 4.8-1.4"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>',
   budget: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v16M7 20h10"/><path d="M5 8h14"/><path d="m5 8-3 6a3 3 0 0 0 6 0Z"/><path d="m19 8-3 6a3 3 0 0 0 6 0Z"/></svg>',
   storm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9Z"/><path d="M10 19.5a2 2 0 0 0 4 0"/><path d="M2 5l2 1M22 5l-2 1"/></svg>',
+  agent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 4v4M9 13h.01M15 13h.01M9.5 16h5"/><path d="M3 13v2M21 13v2"/></svg>',
+  pipeline: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h6l3 6 3-6h6"/><path d="M12 12v8"/><path d="m9 17 3 3 3-3"/></svg>',
   clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
   moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></svg>',
@@ -67,6 +69,7 @@ export function renderHome(root, { onStory }) {
       h('h1', {}, "See how an AI-assisted security team handles the same attack as today's team."),
       h('p', {}, "Pick a story. Two teams face the same attack, side by side, on the same clock. You'll see when each one notices, when each one stops the attacker, and what it costs."),
       h('p', { class: 'how' }, icon('clock'), 'Each story takes a few minutes. Pause whenever you like; the scoreboard keeps up.'),
+      h('p', { class: 'how' }, icon('agent'), 'Inside every story: see how the AI agent works, and how a log line becomes evidence.'),
     ),
     h('section', { class: 'stories', 'aria-label': 'Stories' },
       STORIES.map(s => h('button', { class: 'story', type: 'button', onclick: () => onStory(s.id) },
@@ -122,6 +125,8 @@ export function renderRace(root, ctx) {
   const clockEl = h('div', { class: 'x-clock', 'aria-live': 'off' }, '', h('small'));
   const count = h('div', { class: 'count' });
   const lines = h('div', { 'aria-live': 'polite' });
+  const capLinks = h('div', { class: 'cap-links' });
+  const openView = l => (l.kind === 'agent' ? ctx.onAgentView(l.side) : ctx.onPipeline(l.side));
   const prev = h('button', { class: 'cap-step', type: 'button', 'aria-label': 'Previous moment', onclick: () => ctx.onJump(-1) }, icon('prev'));
   const next = h('button', { class: 'cap-step', type: 'button', 'aria-label': 'Next moment', onclick: () => ctx.onJump(1) }, icon('next'));
   const now = h('div', { class: 'now' });
@@ -134,6 +139,25 @@ export function renderRace(root, ctx) {
     },
   }, l));
   const comparisons = story?.comparisons ?? [];
+
+  // Two always-visible doorways into the deeper views. When the sides differ
+  // in a way that matters, offer one link per side.
+  function exploreCards() {
+    const agentic = [A, B].map((R, i) => (R.config.model === 'agentic' ? i : -1)).filter(i => i >= 0);
+    const sameData = A.config.arch === B.config.arch && A.config.routing === B.config.routing;
+    const sideLinks = (idxs, fn) => (idxs.length === 1 ? null
+      : h('span', { class: 'explore-sides' }, idxs.map(i => h('button', { type: 'button', class: 'cap-link', onclick: e => { e.stopPropagation(); fn(i); } }, `${names[i].title} →`))));
+    const card = (iconName, title, text, idxs, fn) => h('div', {
+      class: 'explore-card', role: idxs.length === 1 ? 'button' : null, tabindex: idxs.length === 1 ? 0 : null,
+      onclick: idxs.length === 1 ? () => fn(idxs[0]) : null,
+      onkeydown: idxs.length === 1 ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fn(idxs[0]); } } : null,
+    },
+      h('span', { class: 'ic' }, icon(iconName)),
+      h('span', { class: 'explore-text' }, h('b', {}, title, idxs.length === 1 ? ' →' : ''), h('span', {}, text), sideLinks(idxs, fn)));
+    return h('section', { class: 'explore', 'aria-label': 'Explore' },
+      agentic.length ? card('agent', 'Inside the agent', 'How the AI team worked this case, step by step: as one agent or a team of specialists, with who is allowed to do what.', agentic, ctx.onAgentView) : null,
+      card('pipeline', 'Inside the pipeline', "How one log line becomes evidence, and where each team's data is stored.", sameData ? [0] : [0, 1], ctx.onPipeline));
+  }
 
   root.replaceChildren(
     h('button', { class: 'back', type: 'button', onclick: ctx.onBack }, '← All stories'),
@@ -166,8 +190,9 @@ export function renderRace(root, ctx) {
         h('div', { class: 'speeds', role: 'group', 'aria-label': 'Speed' }, speedBtns),
         h('label', { class: 'pausebox' }, h('input', { type: 'checkbox', checked: ctx.pauseAt, onchange: e => ctx.onPause(e.target.checked) }), 'Pause at each moment'),
       ),
-      h('div', { class: 'caption' }, prev, h('div', { class: 'text' }, count, lines), next),
+      h('div', { class: 'caption' }, prev, h('div', { class: 'text' }, count, lines, capLinks), next),
     ),
+    exploreCards(),
     h('div', { class: 'score-title' }, h('h2', {}, 'Scoreboard'), h('span', {}, 'Updates as the story plays')),
     scores,
     verdict,
@@ -227,6 +252,7 @@ export function renderRace(root, ctx) {
         lines.replaceChildren(...(idx < 0
           ? [h('p', { class: 'line fade' }, 'Two teams, one attack. Press play, and this space explains each moment as it happens.')]
           : beats[idx].lines.map(l => h('p', { class: 'line fade' }, highlight(l)))));
+        capLinks.replaceChildren(...(idx < 0 ? [] : beats[idx].links.map(l => h('button', { type: 'button', class: 'cap-link', onclick: () => openView(l) }, `${l.label} →`))));
       }
       prev.disabled = idx <= 0;
       next.disabled = idx >= beats.length - 1;

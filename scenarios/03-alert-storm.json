@@ -6,7 +6,7 @@
   "firstMaliciousEvent": "E1",
   "rootCauseEvent": "E1",
   "title": "The alert storm",
-  "short": "3 \u00b7 The alert storm",
+  "short": "3 · The alert storm",
   "oneLiner": "A misconfigured vulnerability scanner floods the security queue with 400 false alarms. In the middle of it, a real attacker guesses an HR employee's password and heads for the payroll files.",
   "teaching": "Alert fatigue is a capacity problem. Four analysts working in order can't get through 400 alerts in a morning, so the one real alert waits for hours. AI agents look at every alert as it arrives, so the real one doesn't wait behind the noise.",
   "noise": {
@@ -161,5 +161,113 @@
       "id": "default",
       "label": "As scripted"
     }
-  ]
+  ],
+  "pipelineDemo": {
+    "source": "idp",
+    "caption": "the attacker signing in as Lee Chen at 9:41 am",
+    "pattern": "successful sign-in from a new country after many failures",
+    "stages": {
+      "raw": "Mar 18 14:41:07 hlv-vpn01 vpnd[1882]: AUTH OK user=lee.chen@halvorsen.example src=198.51.100.140:50322 method=password mfa=none session=7f3c2a91 client=\"WinVPN 5.2\"",
+      "parsed": {
+        "timestamp": "Mar 18 14:41:07",
+        "host": "hlv-vpn01",
+        "process": "vpnd[1882]",
+        "result": "AUTH OK",
+        "user": "lee.chen@halvorsen.example",
+        "src_ip": "198.51.100.140",
+        "src_port": 50322,
+        "method": "password",
+        "mfa": "none",
+        "session": "7f3c2a91",
+        "client": "WinVPN 5.2"
+      },
+      "normalized": {
+        "class_name": "Authentication",
+        "time": "2026-03-18T14:41:07Z",
+        "activity_name": "Logon",
+        "status": "Success",
+        "user": {
+          "name": "lee.chen@halvorsen.example"
+        },
+        "src_endpoint": {
+          "ip": "198.51.100.140",
+          "port": 50322
+        },
+        "auth_protocol": "VPN",
+        "mfa": {
+          "used": false
+        },
+        "metadata": {
+          "product": "vpn",
+          "host": "hlv-vpn01"
+        },
+        "unmapped": {
+          "session": "7f3c2a91",
+          "client": "WinVPN 5.2"
+        }
+      },
+      "enriched": {
+        "class_name": "Authentication",
+        "time": "2026-03-18T14:41:07Z",
+        "status": "Success",
+        "user": {
+          "name": "lee.chen@halvorsen.example",
+          "department": "HR",
+          "usual_countries": [
+            "US"
+          ]
+        },
+        "src_endpoint": {
+          "ip": "198.51.100.140",
+          "location": {
+            "country": "RO"
+          },
+          "new_country_for_user": true
+        },
+        "enrichment": {
+          "failed_attempts_from_ip_last_30m": 612,
+          "distinct_accounts_tried": 300
+        },
+        "auth_protocol": "VPN",
+        "mfa": {
+          "used": false
+        },
+        "metadata": {
+          "product": "vpn",
+          "host": "hlv-vpn01"
+        },
+        "unmapped": {
+          "session": "7f3c2a91",
+          "client": "WinVPN 5.2"
+        }
+      },
+      "reduced": {
+        "class_name": "Authentication",
+        "time": "2026-03-18T14:41:07Z",
+        "status": "Success",
+        "user": {
+          "name": "lee.chen@halvorsen.example",
+          "department": "HR"
+        },
+        "src_endpoint": {
+          "ip": "198.51.100.140",
+          "location": {
+            "country": "RO"
+          },
+          "new_country_for_user": true
+        },
+        "enrichment": {
+          "failed_attempts_from_ip_last_30m": 612,
+          "distinct_accounts_tried": 300
+        },
+        "mfa": {
+          "used": false
+        }
+      }
+    },
+    "notes": {
+      "enriched": "The new country and the 612 failed attempts from the same address are what separate this from the scanner noise. Neither is in the raw log line.",
+      "reduced": "Removed: port, session ID, client version, and the metadata block. Sign-in logs are small, so this source always goes to the hot tier."
+    }
+  }
 }

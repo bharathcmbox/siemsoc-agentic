@@ -181,5 +181,110 @@
       "id": "default",
       "label": "As scripted"
     }
-  ]
+  ],
+  "pipelineDemo": {
+    "source": "idp",
+    "caption": "the attacker signing in to the VPN with a contractor's password at 1:20 am",
+    "pattern": "VPN sign-in from a new country",
+    "stages": {
+      "raw": "Mar 14 06:20:44 hlv-vpn01 vpnd[1882]: AUTH OK user=ext.m.ortiz@halvorsen.example src=203.0.113.201:61877 method=password mfa=not-required group=contractors session=b81e04c2",
+      "parsed": {
+        "timestamp": "Mar 14 06:20:44",
+        "host": "hlv-vpn01",
+        "result": "AUTH OK",
+        "user": "ext.m.ortiz@halvorsen.example",
+        "src_ip": "203.0.113.201",
+        "src_port": 61877,
+        "method": "password",
+        "mfa": "not-required",
+        "group": "contractors",
+        "session": "b81e04c2"
+      },
+      "normalized": {
+        "class_name": "Authentication",
+        "time": "2026-03-14T06:20:44Z",
+        "activity_name": "Logon",
+        "status": "Success",
+        "user": {
+          "name": "ext.m.ortiz@halvorsen.example",
+          "groups": [
+            "contractors"
+          ]
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.201",
+          "port": 61877
+        },
+        "auth_protocol": "VPN",
+        "mfa": {
+          "required": false
+        },
+        "metadata": {
+          "product": "vpn",
+          "host": "hlv-vpn01"
+        },
+        "unmapped": {
+          "session": "b81e04c2"
+        }
+      },
+      "enriched": {
+        "class_name": "Authentication",
+        "time": "2026-03-14T06:20:44Z",
+        "status": "Success",
+        "user": {
+          "name": "ext.m.ortiz@halvorsen.example",
+          "type": "contractor",
+          "manager": "r.singh",
+          "usual_countries": [
+            "US"
+          ],
+          "usual_hours": "08:00-18:00"
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.201",
+          "location": {
+            "country": "BR"
+          },
+          "new_country_for_user": true
+        },
+        "local_time_for_user": "01:20, Saturday",
+        "auth_protocol": "VPN",
+        "mfa": {
+          "required": false
+        },
+        "metadata": {
+          "product": "vpn",
+          "host": "hlv-vpn01"
+        },
+        "unmapped": {
+          "session": "b81e04c2"
+        }
+      },
+      "reduced": {
+        "class_name": "Authentication",
+        "time": "2026-03-14T06:20:44Z",
+        "status": "Success",
+        "user": {
+          "name": "ext.m.ortiz@halvorsen.example",
+          "type": "contractor",
+          "manager": "r.singh"
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.201",
+          "location": {
+            "country": "BR"
+          },
+          "new_country_for_user": true
+        },
+        "local_time_for_user": "01:20, Saturday",
+        "mfa": {
+          "required": false
+        }
+      }
+    },
+    "notes": {
+      "enriched": "A new country, the middle of the night, and an account with no second factor. Enrichment turns a routine \"AUTH OK\" into a warning sign, and adds the manager to call.",
+      "reduced": "Removed: port, session ID, and the metadata block. Sign-in logs are small and high value, so they always go to the hot tier."
+    }
+  }
 }

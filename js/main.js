@@ -143,6 +143,7 @@ function buildRace() {
     onPause: on => { state.pauseAtBeats = on; narrator.setPause(on); },
     onJump: dir => jumpBeat(dir),
     onAgentView: i => openAgentView(state.results[i], state.names[i].ref),
+    onPipeline: i => openPipeline(state.scenario, state.results[i], state.params, state.names[i].title),
   });
 }
 

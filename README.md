@@ -12,6 +12,11 @@ An interactive, vendor-neutral simulator for executives and business leaders. Pi
 
 Each link opens the story directly in the simulator.
 
+Every story also has two deeper views, shown as cards under the race and linked from the caption at the moments they explain:
+
+- **Inside the agent:** how the AI team worked the case, as one agent or as a team of specialists, with who is allowed to do what.
+- **Inside the pipeline:** how one log line is parsed, cleaned up, enriched, and routed, and where each team's data is stored.
+
 1. [What happens when a finance employee clicks a phishing link?](https://bharathcmbox.github.io/siemsoc-agentic/#story=phishing)
 2. [Cheaper log storage: what do you give up?](https://bharathcmbox.github.io/siemsoc-agentic/#story=storage)
 3. [What if the attacker never trips an alarm?](https://bharathcmbox.github.io/siemsoc-agentic/#story=quiet)
@@ -27,7 +32,7 @@ The **Analyst view** switch opens the detailed comparison, where you set each si
 - **Operating model:** traditional (human analysts + SOAR playbooks) or agentic (AI agents + human approval)
 - **Smart routing (detection-aware routing):** on or off. When on, it promotes suspicious events from cheap storage into real-time detection
 
-Each side shows an architecture diagram for its settings. "Inside the pipeline" follows one real event through parsing, normalization, enrichment, reduction, and routing. "Inside the agent" shows the AI's steps as one agent or as a team of specialists.
+Each side shows an architecture diagram for its settings, with buttons for both deeper views.
 
 The URL updates as you change settings, so you can share a link to a specific comparison.
 
