@@ -2,12 +2,12 @@
 // docs/assumptions.md; keep the two in sync. All values are illustrative.
 
 export const SOURCES = [
-  { id: 'idp',   name: 'Identity provider',  gbPerDay: 5,   value: 'High',   tieredRoute: 'hot' },
-  { id: 'email', name: 'Email / mailbox audit', gbPerDay: 20, value: 'High', tieredRoute: 'hot' },
-  { id: 'edr',   name: 'EDR',                gbPerDay: 150, value: 'High',   tieredRoute: 'hot' },
-  { id: 'cloud', name: 'Cloud control plane', gbPerDay: 75, value: 'Medium', tieredRoute: 'hot' },
-  { id: 'fw',    name: 'Firewall',           gbPerDay: 350, value: 'Low',    tieredRoute: 'cold' },
-  { id: 'dns',   name: 'DNS + web proxy',    gbPerDay: 400, value: 'Low',    tieredRoute: 'cold' },
+  { id: 'idp',   name: 'Identity provider',  plain: 'sign-in',             gbPerDay: 5,   value: 'High',   tieredRoute: 'hot' },
+  { id: 'email', name: 'Email / mailbox audit', plain: 'email',          gbPerDay: 20,  value: 'High',   tieredRoute: 'hot' },
+  { id: 'edr',   name: 'EDR',                plain: 'laptop and server',   gbPerDay: 150, value: 'High',   tieredRoute: 'hot' },
+  { id: 'cloud', name: 'Cloud control plane', plain: 'cloud',              gbPerDay: 75,  value: 'Medium', tieredRoute: 'hot' },
+  { id: 'fw',    name: 'Firewall',           plain: 'firewall',            gbPerDay: 350, value: 'Low',    tieredRoute: 'cold' },
+  { id: 'dns',   name: 'DNS + web proxy',    plain: 'web browsing',        gbPerDay: 400, value: 'Low',    tieredRoute: 'cold' },
 ];
 
 // Parameters exposed as sliders. `group` controls where they appear in the UI.

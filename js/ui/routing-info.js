@@ -9,7 +9,7 @@ let costSpan;
 function build() {
   dialog = h('dialog', { 'aria-labelledby': 'routing-title' },
     h('div', { class: 'dlg' },
-      h('h2', { id: 'routing-title' }, 'Detection-aware routing'),
+      h('h2', { id: 'routing-title' }, 'Smart routing (detection-aware routing)'),
       h('p', {}, 'Most of the noisy data (DNS, web proxy, firewall) still goes to cheap storage or the data lake. ',
         'But the pipeline checks each event as it arrives, and ', h('strong', {}, 'copies the few suspicious ones'),
         ' into the hot tier, where real-time detection rules can see them.'),

@@ -161,7 +161,7 @@ export function simulate(scenario, variantId, config, params) {
       const ready = Math.max(...rule.needs.map(id => S.happened[id]));
       if (rule.suppressed) {
         ruleState[rule.id] = 'suppressed';
-        log(ready, 'detect', `${rule.id} doesn't fire`, rule.suppressed, { missed: true, rule: rule.id, ruleName: rule.name });
+        log(ready, 'detect', `${rule.id} doesn't fire`, rule.suppressed, { missed: true, rule: rule.id, ruleName: rule.name, rulePlain: rule.plain ?? rule.name });
         continue;
       }
       const vis = rule.needs.map(id => visibility(byId[id]));
@@ -173,7 +173,7 @@ export function simulate(scenario, variantId, config, params) {
         const text = dropped
           ? `The "${rule.name}" rule needs ${srcs} logs, but they aren't collected at all. They were cut to stay within the SIEM budget.`
           : `The "${rule.name}" rule needs ${srcs} logs in real time, but they went to ${coldName}, where real-time rules don't run.`;
-        log(ready, 'detect', `${rule.id} can't fire`, text, { missed: true, rule: rule.id, ruleName: rule.name, blindSpot: true, dropped, sources: srcs });
+        log(ready, 'detect', `${rule.id} can't fire`, text, { missed: true, rule: rule.id, ruleName: rule.name, rulePlain: rule.plain ?? rule.name, blindSpot: true, dropped, sources: srcs, sourceIds: [...new Set(blind.map(id => byId[id].source))] });
         continue;
       }
       ruleState[rule.id] = 'fired';
@@ -189,7 +189,7 @@ export function simulate(scenario, variantId, config, params) {
     if (rule.rootCause && S.rootCauseAt == null) S.rootCauseAt = t;
     const sev = rule.severity === 'high' ? 'High' : 'Medium';
     log(t, 'detect', `Alert: ${rule.name}`, rule.logic, {
-      severity: rule.severity, rule: rule.id, ruleName: rule.name,
+      severity: rule.severity, rule: rule.id, ruleName: rule.name, rulePlain: rule.plain ?? rule.name,
       badges: [sev, ...(promoted ? ['Promoted by routing'] : []), ...(fromHunt ? ['Scheduled sweep'] : [])],
     });
     if (model === 'agentic') agentOnAlert(t, alert); else humanOnAlert(t, alert);

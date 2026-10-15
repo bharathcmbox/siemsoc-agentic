@@ -45,7 +45,7 @@ function takeaways(A, B, extraA, extraB) {
       : ` The other side's "${lateX.blind.ruleName}" rule couldn't see the ${lateX.blind.sources} logs in real time.`;
     out.push(`${name(early)} raised its first alert ${diff}.${why}`);
     if (early.config.routing && !late.config.routing && early.config.arch !== 'index') {
-      out.push('Detection-aware routing, not the operating model, is what moved the first alert earlier.');
+      out.push('Smart routing (detection-aware routing), not the operating model, is what moved the first alert earlier.');
     } else if (early.config.model === late.config.model && early.config.arch === 'index') {
       out.push('Indexing everything bought the earlier alert, at a much higher data cost.');
     }

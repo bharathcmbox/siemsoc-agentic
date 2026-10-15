@@ -1,0 +1,105 @@
+/* Theme: palette tokens for both themes, the bundled font, and page basics.
+   Dark is the default; main.js sets data-theme on <html> before first paint.
+   Palette: cool neutral greys, slate blue for side A, teal for side B,
+   muted amber / rose / green for attack status. */
+
+@font-face {
+  font-family: 'Figtree';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../vendor/fonts/figtree-latin.woff2') format('woff2');
+}
+
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --soft: #eef1f5;
+  --line: #e2e7ed;
+  --ink: #1e2633;
+  --muted: #5d6878;
+  --a: #5a72a6;
+  --a-soft: #e8edf6;
+  --b: #2f8a7e;
+  --b-soft: #e2f1ee;
+  --undetected: #d29a3c;
+  --active: #c96565;
+  --stopped: #4f9a6f;
+  --calm: #dde3ea;
+  --good-ink: #2f7a52;
+  --bad-ink: #b04a4a;
+  --focus: #3b6fd6;
+  --glow: rgba(90, 114, 166, 0.06);
+  --on-accent: #ffffff;
+
+  /* Extra hues used by the analyst view's timeline lanes. */
+  --detect: #a8711a;
+  --detect-soft: #fbf1de;
+  --agent: #7a5cc4;
+  --agent-soft: #efeafa;
+  --good-soft: #e3f2ea;
+  --bad-soft: #f8e9e8;
+
+  --radius: 12px;
+  --font: 'Figtree', 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141b; --surface: #161d26; --soft: #1d2531; --line: #253040; --ink: #e7ecf2; --muted: #98a4b3;
+    --a: #93a9de; --a-soft: #232d40; --b: #5fc2b2; --b-soft: #1a302d;
+    --undetected: #d9a752; --active: #dc8481; --stopped: #6cbd8e; --calm: #2a3443;
+    --good-ink: #7fd0a1; --bad-ink: #e59a97; --focus: #93b4f7; --glow: rgba(147, 169, 222, 0.10); --on-accent: #0f141b;
+    --detect: #e0b25e; --detect-soft: #392e18; --agent: #b29cf0; --agent-soft: #2a2440; --good-soft: #1b3326; --bad-soft: #3a2323;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141b; --surface: #161d26; --soft: #1d2531; --line: #253040; --ink: #e7ecf2; --muted: #98a4b3;
+  --a: #93a9de; --a-soft: #232d40; --b: #5fc2b2; --b-soft: #1a302d;
+  --undetected: #d9a752; --active: #dc8481; --stopped: #6cbd8e; --calm: #2a3443;
+  --good-ink: #7fd0a1; --bad-ink: #e59a97; --focus: #93b4f7; --glow: rgba(147, 169, 222, 0.10); --on-accent: #0f141b;
+  --detect: #e0b25e; --detect-soft: #392e18; --agent: #b29cf0; --agent-soft: #2a2440; --good-soft: #1b3326; --bad-soft: #3a2323;
+  color-scheme: dark;
+}
+
+/* Aliases so the analyst view's stylesheet reads from the same palette. */
+:root {
+  --surface-2: var(--soft);
+  --border: var(--line);
+  --text: var(--ink);
+  --accent: var(--a);
+  --accent-soft: var(--a-soft);
+  --attacker: var(--active);
+  --attacker-soft: var(--bad-soft);
+  --user: var(--muted);
+  --human: var(--a);
+  --human-soft: var(--a-soft);
+  --good: var(--stopped);
+  --bad: var(--active);
+  --shadow: none;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background-color: var(--bg);
+  background-image: radial-gradient(1100px 420px at 50% -160px, var(--glow), transparent 70%);
+  background-repeat: no-repeat;
+  color: var(--ink);
+  font: 16px/1.55 var(--font);
+  font-variant-numeric: tabular-nums;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+button, select, input { font: inherit; color: inherit; }
+a { color: var(--a); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1120px; margin: 0 auto; }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

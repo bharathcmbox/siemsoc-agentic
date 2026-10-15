@@ -23,9 +23,9 @@
     "objectiveImpact": "4 GB of source code for the company's routing software is now outside the network.",
     "undetected": "No alert fired at any point.",
     "mitre": "T1204.002 malicious file, T1071.001 web-protocol C2, T1021 remote services, T1560.001 archive via utility, T1567.002 exfiltration to cloud storage",
-    "accessCut": "Jordan's laptop was isolated",
+    "accessCut": "Jordan's laptop was cut off from the network",
     "lureGone": "the malicious download was removed",
-    "indicatorBlocked": "the C2 server was blocked at DNS and the firewall",
+    "indicatorBlocked": "the attacker's server was blocked",
     "containDone": "Jordan's laptop and the servers it reached are isolated from the network; the stolen service-account password is reset",
     "blockTitle": "C2 server blocked",
     "blockDone": "cdn-telemetry-sync.example and 203.0.113.80 blocked at DNS and the firewall",
@@ -270,7 +270,8 @@
       "confidence": "clear",
       "rootCause": true,
       "triageNote": "The destination is on yesterday's threat-intel feed, and the laptop calls it every 5 minutes.",
-      "agentTriageNote": "Regular connections from one laptop to a known C2 server: active malware. Investigating."
+      "agentTriageNote": "Regular connections from one laptop to a known C2 server: active malware. Investigating.",
+      "plain": "the check for connections to known attacker servers"
     },
     {
       "id": "R-STAGE",
@@ -282,7 +283,8 @@
       "severity": "medium",
       "confidence": "ambiguous",
       "triageNote": "Could be a backup job, could be data theft. Needs a closer look.",
-      "agentTriageNote": "A 4 GB source-code archive, made by a service account that normally only runs builds and that signed in from an engineer's laptop at 10:45. High risk despite the medium severity. Investigating."
+      "agentTriageNote": "A 4 GB source-code archive, made by a service account that normally only runs builds and that signed in from an engineer's laptop at 10:45. High risk despite the medium severity. Investigating.",
+      "plain": "the check for large archives on servers"
     },
     {
       "id": "R-EXF",
@@ -292,7 +294,8 @@
         "E7"
       ],
       "severity": "high",
-      "confidence": "clear"
+      "confidence": "clear",
+      "plain": "the check for large uploads to unfamiliar storage"
     }
   ],
   "variants": [

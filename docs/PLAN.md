@@ -1,6 +1,6 @@
 # Agentic SOC Simulator — Plan
 
-Status: approved (rev 5). Phases 1–2 done; Phase 3 built: architecture diagram, pipeline walk-through, budget cap, scenario 5.
+Status: approved (rev 6). Phases 1–4 built. Phase 4 redesigned the app for executives; the original detailed view lives behind the "Analyst view" switch.
 
 ## 1. Goal and audience
 
@@ -155,7 +155,14 @@ index.html            entry point
 ## 9. Phases
 
 1. **Concepts and assumptions:** the primer (SIEM, SOAR, pipelines, data architectures, agentic SOC, agent design), the metrics and cost model, scenarios 1 and 2 scripted on paper.
-2. **MVP:** the engine with both selectors and the detection-aware routing toggle (including its info panel), the split view and timeline, a narrator that explains each key moment and how the two sides differ (with optional pause at each moment), scenarios 1 and 2 (including the hunting agent), and the executive summary card. *Review checkpoint.*
+2. **MVP:** the engine with both selectors and the detection-aware routing toggle (including its info panel), the split view and timeline, a narrator that explains each key moment and how the two sides differ (with optional pause at each moment), scenarios 1 and 2 (including the scheduled sweep), and the executive summary card. *Review checkpoint.*
 3. **Ingestion and architecture views:** a per-side architecture diagram (animated, click to explain), an "Inside the pipeline" walk-through of one real event (parse, normalize, enrich, reduce, route) with daily volume bars, a SIEM budget cap that drops low-value sources, and scenario 5. *Built.*
-4. **Depth:** the "Inside the agent" view (generalist vs specialist team), guided tour presets, the honest section, the vendor-questions card, and scenarios 3 and 4.
-5. **Polish and publish:** mobile layout, GitHub Pages setup, and README.
+4. **Executive redesign:** *Built.* Agreed through a clickable mockup first.
+   - **Home:** four stories phrased as business questions (phishing, cheaper storage, the quiet attacker, the budget), in a 2×2 grid.
+   - **Race view:** both teams on one clock, with status colors (unnoticed, spotted but active, stopped) and markers for spotted, stopped and attacker succeeds.
+   - **Caption:** the narrator rewritten in plain language, naming the teams ("today's team", "the AI-assisted team"); optional pause at each moment; arrow keys step through it.
+   - **Scoreboard:** time to spot the attack, time to stop the attacker, did the attacker succeed, analyst time and data cost.
+   - **Verdict:** plain takeaways, "What AI agents can get wrong" with guardrails, questions to ask a vendor, and a copyable link.
+   - **Analyst view switch:** the Phase 2–3 detailed view, sharing the same state, so any custom comparison also plays in the executive view.
+   - **Look:** dark by default with a light option; a calm neutral palette; the Figtree font bundled in `vendor/fonts` (SIL Open Font License); a glossary of plain definitions.
+5. **Depth (next):** the "Inside the agent" view (generalist vs specialist team), scenarios 3 (alert storm) and 4 (ransomware precursor), and any further polish.
