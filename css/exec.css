@@ -48,20 +48,18 @@
 .back:hover { color: var(--ink); }
 .race-head { padding-block: 14px 18px; display: grid; gap: 8px; }
 .race-head h1 { font-size: clamp(1.5rem, 3.2vw, 2rem); line-height: 1.2; }
-.race-head p { margin: 0; color: var(--muted); max-width: 46rem; }
+.race-head p { margin: 0; color: var(--muted); }
 .angles { margin-top: 10px; display: grid; gap: 10px; }
 .angles-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
 .angles-head h2 { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0; }
 .angles-head span { font-size: 0.85rem; color: var(--muted); }
 .angles-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-.angle { display: grid; align-content: start; gap: 6px; text-align: left; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; transition: border-color 0.15s, transform 0.15s, background 0.15s; }
+.angle { display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 12px; text-align: left; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; cursor: pointer; transition: border-color 0.15s, transform 0.15s, background 0.15s; }
 .angle:hover { border-color: var(--a); transform: translateY(-1px); }
-.angle b { font-size: 1.02rem; line-height: 1.3; }
-.angle-top { display: flex; align-items: center; gap: 10px; min-height: 26px; }
+.angle-text { display: grid; gap: 3px; }
+.angle b { font-size: 1rem; line-height: 1.3; }
 .angle-n { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--soft); color: var(--muted); font-size: 0.82rem; font-weight: 700; }
-.angle-teaser { font-size: 0.88rem; color: var(--muted); line-height: 1.4; }
-.angle-go { margin-top: 2px; font-size: 0.85rem; font-weight: 600; color: var(--a); }
-.angle-now { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--a); }
+.angle-teaser { font-size: 0.86rem; color: var(--muted); line-height: 1.4; }
 .angle[aria-pressed="true"] { border-color: var(--a); background: var(--a-soft); box-shadow: inset 4px 0 0 var(--a); cursor: default; transform: none; }
 .angle[aria-pressed="true"] .angle-n { background: var(--a); color: var(--on-accent); }
 @media (prefers-reduced-motion: reduce) { .angle, .angle:hover { transition: none; transform: none; } }

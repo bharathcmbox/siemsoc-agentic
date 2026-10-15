@@ -170,13 +170,13 @@ export function renderRace(root, ctx) {
         type: 'button', class: 'angle', 'aria-pressed': String(on),
         onclick: on || !it.id ? null : () => ctx.onCompare(it.id),
       },
-        h('span', { class: 'angle-top' }, h('span', { class: 'angle-n' }, String(i + 1)), on ? h('span', { class: 'angle-now' }, 'Now watching') : null),
-        h('b', {}, it.chapter),
-        it.teaser ? h('span', { class: 'angle-teaser' }, it.teaser) : null,
-        on ? null : h('span', { class: 'angle-go' }, 'Watch this →'));
+        h('span', { class: 'angle-n', 'aria-hidden': 'true' }, String(i + 1)),
+        h('span', { class: 'angle-text' },
+          h('b', {}, it.chapter),
+          it.teaser ? h('span', { class: 'angle-teaser' }, it.teaser) : null));
     };
     return h('section', { class: 'angles', 'aria-label': 'Ways to watch this story' },
-      h('div', { class: 'angles-head' }, h('h2', {}, `${items.length} ways to watch this story`), h('span', {}, 'Pick one. The race below replays with it.')),
+      h('div', { class: 'angles-head' }, h('h2', {}, `${items.length} ways to watch this story`), h('span', {}, 'Pick one. The race below replays with it; the highlighted card is playing.')),
       h('div', { class: 'angles-row' }, items.map(card)));
   }
 
