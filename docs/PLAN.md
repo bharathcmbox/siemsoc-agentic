@@ -1,0 +1,136 @@
+# Agentic SOC Simulator — Plan
+
+Status: approved (rev 3)
+
+## 1. Goal and audience
+
+Show non-specialists, in about 10 minutes, how an Agentic SOC differs from a traditional SOC, and how ingestion-time data handling, SIEM, and SOAR fit together in each model.
+
+- **Executives** want outcomes: time to detect and respond, analyst hours, cost, and risk. They get a short, guided path.
+- **Practitioners and curious readers** want the mechanics: what happens at ingestion, in the SIEM and in SOAR, and what the agent actually decides. They get a "show me the details" path.
+
+**Core message:** a SOC makes separate design choices that vendors often blur together:
+
+1. **Data architecture: where data lives and how it gets searched.** Data can be indexed at ingest, split across tiers, or queried in place in a data lake.
+2. **Operating model: who does the triage, investigation and response work.** That's either human analysts using playbooks or AI agents with human approval steps.
+3. **Agent design (inside the agentic model): how the AI is put together.** It can be one generalist agent or a team of specialist agents. It can act as a copilot or work autonomously, be built into a platform or sit on top of existing tools, and react to alerts or also hunt proactively.
+
+**Main point for executives:** an agentic SOC greatly reduces the human effort in each investigation, but it **doesn't add detection coverage you never had**. An agent can only reason over data it can reach, once something prompts it to look. It works best paired with routing at ingest that takes detections into account, plus either streaming detections or proactive hunting.
+
+## 2. Core experience: one incident, compared side by side
+
+The screen is split, with a shared timeline. Each side is set with two selectors:
+
+| Selector | Options |
+|---|---|
+| **Data architecture** | Index-at-ingest · Tiered (hot + cheap) · Federated / data lake |
+| **Operating model** | Traditional (human + SOAR playbooks) · Agentic (AI agents + human approval) |
+
+The left and right sides can use any combination. The guided tour uses preset comparisons (see §6).
+
+Agent design is deliberately **not** a third selector on the split screen. Its place is the "Inside the agent" view (§5).
+
+Stage by stage:
+
+| Stage | Traditional | Agentic |
+|---|---|---|
+| **Ingestion** | The data architecture sets what happens here: index everything, route data to tiers, or land it in the lake. | Same architecture choices. The agent doesn't change ingestion. |
+| **Detection** | Static correlation rules, which only run on data they can see in real time. | The same rules run, the agent groups related signals into a single case, and an optional hunting agent searches cold data on a schedule. |
+| **Triage** | The alert waits in a queue, then gets checked by hand. | Immediate automated triage, enrichment and scoring. |
+| **Investigation** | An analyst pivots across tools by hand. | The agent queries the tools itself, across all data tiers, and cites its evidence. |
+| **Response** | A fixed playbook runs if the alert matches it. Otherwise the work is manual. | The agent adapts the response and **asks for human approval** before high-impact actions. |
+| **Reporting** | Written up by hand. | The agent drafts a summary, a MITRE mapping, and a timeline. |
+
+Running counters on both sides: time elapsed, alerts in the queue, analyst minutes spent, GB ingested and its cost, storage cost, detection coverage, time to find the evidence, and whether the attack was contained.
+
+## 3. Data architecture models
+
+These describe architecture patterns, not specific vendors.
+
+| Model | How it works | Strengths | Trade-offs |
+|---|---|---|---|
+| **Index-at-ingest** (classic) | Every event is parsed and indexed in hot storage as it arrives. | Fast search over everything; every detection rule can see every log. | Cost grows with volume, so teams drop log sources to stay in budget, which creates blind spots. |
+| **Tiered** | A pipeline routes high-value data to the hot indexed tier and the rest to a cheap tier with limited search, archive, or rehydrate-on-demand. | Much lower cost; keeps data you'd otherwise drop. | Real-time detection rules usually can't see the cheap tier. Searching it is slower, limited, or billed per query, and rehydrating it can take minutes to hours. |
+| **Federated / data lake** | Data lands in open-format object storage and is queried where it sits (schema-on-read). The SIEM indexes only a subset, or none of it. | Cheapest storage, long retention, one copy of the data shared with other teams. | Query speed depends on the data layout. Real-time detection needs a separate streaming path. Normalization moves to query time. |
+
+How this connects to ingestion: in the tiered and lake models, the **pipeline's routing rules become security decisions**. A log marked "low value" at ingest is a log that detection rules will never see in real time.
+
+## 4. Scenarios
+
+All scenarios are deterministic, scripted JSON files. There are no live LLM calls. The full scripts are in `docs/scenarios/`.
+
+1. **Phishing → session token theft → impossible-travel sign-in → mailbox forwarding rule → payment fraud attempt.** This is the flagship scenario. It runs with any architecture and either operating model.
+2. **"Where did the evidence go?" (data architecture comparison).** This is the same attack, but the attacker uses a residential proxy near the victim, so the impossible-travel alert doesn't fire. The strongest early evidence (DNS/proxy hits to a newly registered lookalike domain) is high-volume and was routed to the cheap tier as "low value":
+   - **Index-at-ingest:** a real-time rule catches the phishing click within minutes. The cost meter shows what that coverage costs every month.
+   - **Tiered:** only a medium-severity "new forwarding rule" alert fires, about 90 minutes later. Investigation stalls until someone searches the cold tier and waits for it.
+   - **Federated / lake:** searching in place finds the evidence in minutes once someone looks. There's still no real-time alert.
+   - **Agentic on tiered or lake:** the agent picks up the medium alert right away and searches the cold tier without being asked. It finds the phishing click and **two other users who clicked the same link**. A per-investigation query budget acts as a guardrail.
+   - **Hunting agent:** a scheduled hunt for newly registered domains over cold data flags the domain at its next run. That's too late for the first victim, but it protects the other two.
+   - **Takeaway:** the agent shortens the time from alert to containment and widens the scope of what gets found. It **can't move the first alert earlier**, though. Only routing and detection engineering can do that, and a hunting agent can only partly make up for it, on a schedule.
+3. **Alert storm:** one real threat hidden in 500 false positives, showing how alert fatigue lets a real threat slip through.
+4. **Ransomware precursor:** lateral movement, then a mass file rename, racing against the clock.
+5. **Ingestion cost:** a noisy firewall or DNS source, comparing ingest-all with filter-and-route.
+
+## 5. Agent architecture: the "Inside the agent" view
+
+This is a drill-down from any Agentic side of the split screen. It explains agent design as **design choices**, never as products.
+
+| Design choice | Options |
+|---|---|
+| **Agent structure** | One generalist agent with many tools · An orchestrator handing work to specialist agents (triage, investigation, malware analysis, detection engineering, hunting, response, reporting) |
+| **Autonomy** | Copilot (a person asks, the AI answers) · Autonomous on each alert, with human approval for actions · Autonomous within policy |
+| **Placement** | Built into a SIEM/XDR platform · An overlay that sits across your existing tools through their APIs |
+| **Trigger** | Reacts to alerts · Also works proactively (hunting, detection tuning) |
+
+The view works like this:
+
+- A toggle switches between **single generalist** and **specialist team**. The same incident plays out either as one reasoning loop or as swimlanes of specialist agents handing work to each other. Each step shows the tools it called, the permissions it used, the data tier it queried and what that cost, approval points, and audit entries.
+- **The outcome metrics stay nearly identical between the two.** This is deliberate. Structure changes how the work is governed and audited, not what gets caught.
+- Trade-offs it calls out:
+  - **Specialist team:** each agent can have tightly limited permissions, agents can work in parallel, and each role can be tested on its own. The downsides are context lost at handoffs, coordination overhead, and an audit trail that's harder to follow end to end.
+  - **Single agent:** one continuous line of reasoning and a simpler audit trail. The downsides are broad permissions, one overloaded context, and a generalist that's average across tasks.
+- **A caveat to state explicitly:** the number of named agents is partly packaging. A "single agent" can use sub-agents internally, and several "named agents" can be one model running with different instructions.
+
+## 6. Explainer layers
+
+- **Guided tour** with captions at key moments, including preset comparisons: "Classic vs Tiered (human SOC)", "Tiered human vs Tiered agentic", and "Classic human vs Lake agentic".
+- **Architecture view:** an animated data flow through pipeline → tiers/lake → SIEM detection → SOAR → agents → human. Clicking a component explains what it does.
+- **Inside the agent** (§5).
+- **The honest section:** what the agent can get wrong (hallucinated conclusions, overconfidence, prompt injection through log content, runaway query costs, gaps in the audit trail) and the guardrails against it.
+- **Executive summary card:** MTTD, MTTR, analyst hours, ingest and storage cost, and detection coverage, using illustrative assumptions viewers can adjust with sliders.
+- **"Questions to ask a vendor" card:** a vendor-neutral checklist built from §3 and §5, which is the practical thing executives take away.
+
+## 7. Content defaults
+
+- **Vendor neutral:** use capability categories and architecture patterns only, with no vendor appendix.
+- **Logs:** plain-English summaries by default, with an expandable "raw log" view. Raw logs use field names loosely modeled on OCSF, an open, vendor-neutral schema.
+- **Metrics:** illustrative numbers that viewers can adjust, citing public surveys where they exist. All assumptions are documented in `docs/assumptions.md`.
+
+## 8. Tech approach: runs straight from GitHub
+
+- **Hosting:** GitHub Pages, set to deploy from branch `main`, at `https://<user>.github.io/siemsoc-study/`. No install, build step, or GitHub Actions needed.
+- **Code:** plain HTML, CSS and JavaScript (ES modules). No framework, bundler, or `package.json`.
+- **Third-party libraries:** pinned copies stored in `/vendor/` if needed, so nothing depends on a CDN at runtime.
+- **Data:** scenarios are JSON files.
+- **Visuals:** SVG and CSS animation, supporting light and dark themes.
+- **Local preview (optional):** run `python3 -m http.server` in the repo folder. Opening `index.html` directly from disk won't work, because browsers block modules and JSON loading from local files.
+- **Note:** GitHub Pages on a private repo requires a paid GitHub plan.
+- **Dropped:** live LLM mode. It would need an API key and a server, which goes against the "nothing to install" requirement.
+
+```
+index.html            entry point
+/css/                 styles, themes
+/js/engine/           replay engine, metrics + cost model, data-tier model
+/js/ui/               split view, selectors, timeline, architecture diagram, agent views, exec summary
+/scenarios/*.json     scenario definitions + sample events
+/vendor/              pinned third-party libs, if any
+/docs/                PLAN.md, primer.md, assumptions.md, scenarios/
+```
+
+## 9. Phases
+
+1. **Concepts and assumptions:** the primer (SIEM, SOAR, pipelines, data architectures, agentic SOC, agent design), the metrics and cost model, scenarios 1 and 2 scripted on paper.
+2. **MVP:** the engine with both selectors built in from the start, the split view and timeline, scenarios 1 and 2 (including the hunting agent), and the executive summary card. *Review checkpoint.*
+3. **Ingestion and architecture views:** the animated diagram, the routing and data-cleaning visuals, and scenario 5.
+4. **Depth:** the "Inside the agent" view (generalist vs specialist team), guided tour presets, the honest section, the vendor-questions card, and scenarios 3 and 4.
+5. **Polish and publish:** mobile layout, GitHub Pages setup, and README.
