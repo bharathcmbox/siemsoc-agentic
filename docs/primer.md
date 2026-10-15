@@ -81,6 +81,16 @@ Data lands in open-format files on object storage and is queried in place ("sche
 - ✅ Cheapest storage, long retention, one copy shared with other teams (IT, fraud, data science).
 - ❌ Query speed depends on how the data is laid out; real-time detection needs a separate streaming path; normalization work moves to query time.
 
+### 4.4 Detection-aware routing (works with tiered or lake)
+
+**For execs:** Keep most of the noisy data in cheap storage, but have the pipeline pull out the few suspicious events your real-time detections need. You get most of the savings and most of the early warning.
+
+The pipeline enriches events as they arrive (for example, "this domain was registered 3 days ago"). Events matching a short list of high-value patterns get **copied** into the hot tier. Everything else goes to cheap storage or the lake as before.
+
+- ✅ The anticipated detections work in real time again, for a tiny share of the volume.
+- ❌ It only catches patterns someone thought of in advance. The pattern list needs upkeep, and the pipeline now depends on its enrichment lookups.
+- ➜ Unanticipated patterns still need hunting over the cold data, by people or a hunting agent.
+
 ### Summary
 
 | | Index-at-ingest | Tiered | Federated / lake |

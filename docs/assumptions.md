@@ -32,6 +32,16 @@ The "Detection value" labels deliberately mirror how many teams classify sources
 
 Pipeline reduction (dedup, field trimming) applies to all architectures: default **30%** volume reduction (range 0 – 60%), Illustrative.
 
+### Detection-aware routing (toggle)
+
+| Parameter | Default | Range | Source |
+|---|---|---|---|
+| Share of DNS/proxy events matching a promotion pattern | 0.1% | 0.01 – 2% | Illustrative |
+| Default promotion patterns | Newly registered domain (< 7 days); domain on threat-intel list; lookalike of a company domain | | Illustrative |
+| Added pipeline latency from enrichment | 2 s | 0.5 – 30 s | Illustrative |
+
+Promoted events are **copied** to the hot tier and still stored in cheap storage or the lake, so cold-data hunting still has the full record. With defaults, the extra cost is 400 GB/day × 0.1% × 0.7 × 30 × $2.00 ≈ **$17/month**.
+
 ## 3. Storage and query cost
 
 Expressed as a blended monthly cost, not any vendor's price list.

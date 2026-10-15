@@ -1,6 +1,6 @@
 # Agentic SOC Simulator — Plan
 
-Status: approved (rev 3)
+Status: approved (rev 4: detection-aware routing toggle added)
 
 ## 1. Goal and audience
 
@@ -25,6 +25,7 @@ The screen is split, with a shared timeline. Each side is set with two selectors
 |---|---|
 | **Data architecture** | Index-at-ingest · Tiered (hot + cheap) · Federated / data lake |
 | **Operating model** | Traditional (human + SOAR playbooks) · Agentic (AI agents + human approval) |
+| **Detection-aware routing** (toggle) | Off · On. Applies to Tiered and Federated / lake. Under Index-at-ingest it's disabled, with a note that everything is already hot |
 
 The left and right sides can use any combination. The guided tour uses preset comparisons (see §6).
 
@@ -55,6 +56,28 @@ These describe architecture patterns, not specific vendors.
 
 How this connects to ingestion: in the tiered and lake models, the **pipeline's routing rules become security decisions**. A log marked "low value" at ingest is a log that detection rules will never see in real time.
 
+### Detection-aware routing (toggle)
+
+When this is on, the pipeline enriches each event as it arrives (for example, it looks up how old a domain is). Events from "low-value" sources that match a short list of high-value patterns get **promoted**: a copy goes to the hot tier, where real-time rules can see it. Everything else from those sources still goes to cheap storage or the lake.
+
+- **What it buys:** the real-time detections you anticipated work again, for a tiny share of the volume.
+- **What it costs:** a small amount of hot-tier volume. You also take on keeping the pattern list current, and the pipeline now depends on its enrichment lookups working.
+- **What it doesn't fix:** patterns nobody anticipated. That's still the job of hunting (by agents or people).
+
+**How the UI explains it.** The toggle never appears as a bare switch:
+
+1. **A one-line label next to the switch:** "Promote suspicious events from cheap storage to real-time detection."
+2. **An info panel that opens on first use (and from an ⓘ button):**
+   - a three-step mini diagram (event arrives → enrichment checks it against the patterns → promoted to hot, or sent to cheap storage)
+   - the current pattern list in plain English
+   - three short lists: what it buys, what it costs, what it doesn't fix
+3. **Visible effects when it's flipped:**
+   - the promoted events animate across the architecture diagram
+   - the cost counter moves (only slightly)
+   - detection coverage changes
+   - previously blind rules light up on the timeline with a "promoted" badge
+4. **A guided tour preset, "Tiered agentic, routing off vs on":** the same architecture and operating model on both sides, with only the toggle different.
+
 ## 4. Scenarios
 
 All scenarios are deterministic, scripted JSON files. There are no live LLM calls. The full scripts are in `docs/scenarios/`.
@@ -67,6 +90,7 @@ All scenarios are deterministic, scripted JSON files. There are no live LLM call
    - **Agentic on tiered or lake:** the agent picks up the medium alert right away and searches the cold tier without being asked. It finds the phishing click and **two other users who clicked the same link**. A per-investigation query budget acts as a guardrail.
    - **Hunting agent:** a scheduled hunt for newly registered domains over cold data flags the domain at its next run. That's too late for the first victim, but it protects the other two.
    - **Takeaway:** the agent shortens the time from alert to containment and widens the scope of what gets found. It **can't move the first alert earlier**, though. Only routing and detection engineering can do that, and a hunting agent can only partly make up for it, on a schedule.
+   - **With detection-aware routing on:** newly-registered-domain hits get promoted to the hot tier, so the early alert fires at 09:14 on tiered and lake too. That adds only about $20 a month in hot-tier cost. Combined with the agentic model, this gives the best outcome at close to the cheapest cost.
 3. **Alert storm:** one real threat hidden in 500 false positives, showing how alert fatigue lets a real threat slip through.
 4. **Ransomware precursor:** lateral movement, then a mass file rename, racing against the clock.
 5. **Ingestion cost:** a noisy firewall or DNS source, comparing ingest-all with filter-and-route.
@@ -93,7 +117,7 @@ The view works like this:
 
 ## 6. Explainer layers
 
-- **Guided tour** with captions at key moments, including preset comparisons: "Classic vs Tiered (human SOC)", "Tiered human vs Tiered agentic", and "Classic human vs Lake agentic".
+- **Guided tour** with captions at key moments, including preset comparisons: "Classic vs Tiered (human SOC)", "Tiered human vs Tiered agentic", "Tiered agentic, routing off vs on", and "Classic human vs Lake agentic + routing".
 - **Architecture view:** an animated data flow through pipeline → tiers/lake → SIEM detection → SOAR → agents → human. Clicking a component explains what it does.
 - **Inside the agent** (§5).
 - **The honest section:** what the agent can get wrong (hallucinated conclusions, overconfidence, prompt injection through log content, runaway query costs, gaps in the audit trail) and the guardrails against it.
@@ -130,7 +154,7 @@ index.html            entry point
 ## 9. Phases
 
 1. **Concepts and assumptions:** the primer (SIEM, SOAR, pipelines, data architectures, agentic SOC, agent design), the metrics and cost model, scenarios 1 and 2 scripted on paper.
-2. **MVP:** the engine with both selectors built in from the start, the split view and timeline, scenarios 1 and 2 (including the hunting agent), and the executive summary card. *Review checkpoint.*
+2. **MVP:** the engine with both selectors and the detection-aware routing toggle (including its info panel), the split view and timeline, scenarios 1 and 2 (including the hunting agent), and the executive summary card. *Review checkpoint.*
 3. **Ingestion and architecture views:** the animated diagram, the routing and data-cleaning visuals, and scenario 5.
 4. **Depth:** the "Inside the agent" view (generalist vs specialist team), guided tour presets, the honest section, the vendor-questions card, and scenarios 3 and 4.
 5. **Polish and publish:** mobile layout, GitHub Pages setup, and README.

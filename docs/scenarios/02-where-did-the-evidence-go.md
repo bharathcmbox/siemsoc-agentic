@@ -130,4 +130,28 @@ Query costs are a few dollars per incident and aren't included. The engine will 
 3. **The agentic SOC recovers the response side** on cheap architectures: containment, scope, and root cause all happen sooner, with about 10× less human effort.
 4. **Nothing in the agentic column moved the first alert.** Only index-at-ingest, a streaming rule on DNS/proxy, or routing that "promotes" newly-registered-domain hits into the hot tier gets you the 09:14 alert. That's the "what else" an agentic SOC needs.
 
-> Design note for the simulator: offer a fourth routing option — **"Detection-aware routing"** — where the pipeline keeps all DNS/proxy in the cheap tier *except* events matching a small set of high-value patterns (e.g. newly registered domains), which go to hot. Cost stays near the tiered figure; R-NRD fires at 09:14 again. This is the constructive answer to message 4.
+---
+
+## Toggle: detection-aware routing ON
+
+This is the constructive answer to message 4. The pipeline enriches each DNS/proxy event with how old its domain is. Events for domains under 7 days old are **copied** to the hot tier, and everything else stays where it was. Dana's 09:12 visit to `halvorsen-login.example` (3 days old) is promoted, so **R-NRD fires at 09:14 on every architecture.**
+
+| Run | Plays out like | First alert | Contained | Fraud sent | Compromised users | Monthly data cost |
+|---|---|---|---|---|---|---|
+| B+ Tiered / Trad + routing | Run A | 09:14 | 10:57 | No | 1 | ~$12,900 (+~$17) |
+| C+ Lake / Trad + routing | Run A | 09:14 | 10:57 | No | 1 | ~$11,400 (+~$17) |
+| D+ Tiered / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | ~$12,900 (+~$17) |
+| E+ Lake / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | ~$11,400 (+~$17) |
+
+The **quiet attacker** (variant 2b) is also caught at 09:14 with the toggle on, because the alert no longer depends on the forwarding rule.
+
+**What the UI should say when the toggle is flipped in this scenario:**
+
+> Detection-aware routing copied **1 event** out of about 400 GB/day of DNS and proxy logs into real-time detection: Dana's visit to a 3-day-old domain. That one event moved the first alert from 09:48 to 09:14, for about $17 a month.
+>
+> It only works for patterns you anticipated. An attacker using a 30-day-old domain wouldn't be promoted. That's what the hunting agent is for.
+
+**Final ranking for executives (illustrative):** the best outcome at close to the lowest cost is **Lake or Tiered + detection-aware routing + agentic operations**. Each of the three choices does a different job:
+- the cheaper architecture cuts the data bill
+- routing brings back early detection
+- the agents cut response time and human effort
