@@ -15,6 +15,7 @@
       <p>One attack, two security operations setups, side by side. Choose where each side keeps its data and who does the work, then press play.</p>
     </header>
 
+    <div class="sticky">
     <div class="controls card" role="region" aria-label="Simulation controls">
       <label class="field">Scenario <select id="scenario"></select></label>
       <label class="field" id="variant-field">Variant <select id="variant"></select></label>
@@ -30,6 +31,8 @@
         <span class="clock" id="clock" aria-live="off">--:--</span>
         <button class="btn" id="end" type="button">Skip to end</button>
       </div>
+    </div>
+      <section class="narrator card" id="narrator" aria-live="polite" aria-label="Narrator"></section>
     </div>
 
     <section class="intro card" id="intro" aria-live="polite"></section>

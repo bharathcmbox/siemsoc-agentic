@@ -16,9 +16,9 @@ Current phase: **Phase 2 MVP built** (on branch `phase-1`), awaiting review.
 - `docs/scenarios/*.md` — scenario scripts (design input; the engine is the source of truth for timings)
 - `index.html`, `css/styles.css` — the single-page app
 - `js/engine/` — `simulate.js` (discrete-event simulation of one SOC configuration), `cost.js` (routing + monthly cost), `assumptions.js` (every parameter, mirrored in `docs/assumptions.md`)
-- `js/ui/` — side panel, executive summary, assumption sliders, routing info dialog; `js/main.js` wires state, playback, presets, and the shareable URL hash
+- `js/ui/` — side panel, narrator (comparative beats built from both results), executive summary, assumption sliders, routing info dialog; `js/main.js` wires state, playback, presets, and the shareable URL hash
 - `scenarios/*.json` — scenario data: attacker events, detection rules, labels, variants
-- `tests/run-all.mjs` — dev-only check (needs Node): `node tests/run-all.mjs` prints metrics for every scenario × configuration; `node tests/run-all.mjs --timeline <scenarioId> <variant> <arch> <model> <on|off>` prints one timeline
+- `tests/run-all.mjs` — dev-only check (needs Node): `node tests/run-all.mjs` prints metrics for every scenario × configuration; `node tests/run-all.mjs --timeline <scenarioId> <variant> <arch> <model> <on|off>` prints one timeline; `node tests/narrate.mjs <scenarioId> <variant> <arch-model-0|1> <arch-model-0|1>` prints the narrator beats for one comparison
 
 ## Constraints
 

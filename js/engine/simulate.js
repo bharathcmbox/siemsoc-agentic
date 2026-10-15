@@ -145,7 +145,7 @@ export function simulate(scenario, variantId, config, params) {
       const ready = Math.max(...rule.needs.map(id => S.happened[id]));
       if (rule.suppressed) {
         ruleState[rule.id] = 'suppressed';
-        log(ready, 'detect', `${rule.id} doesn't fire`, rule.suppressed, { missed: true, rule: rule.id });
+        log(ready, 'detect', `${rule.id} doesn't fire`, rule.suppressed, { missed: true, rule: rule.id, ruleName: rule.name });
         continue;
       }
       const vis = rule.needs.map(id => visibility(byId[id]));
@@ -153,7 +153,7 @@ export function simulate(scenario, variantId, config, params) {
       if (blind.length) {
         ruleState[rule.id] = 'blind';
         const srcs = [...new Set(blind.map(id => sourceName(byId[id].source)))].join(', ');
-        log(ready, 'detect', `${rule.id} can't fire`, `The "${rule.name}" rule needs ${srcs} logs in real time, but they went to ${coldName}, where real-time rules don't run.`, { missed: true, rule: rule.id, blindSpot: true });
+        log(ready, 'detect', `${rule.id} can't fire`, `The "${rule.name}" rule needs ${srcs} logs in real time, but they went to ${coldName}, where real-time rules don't run.`, { missed: true, rule: rule.id, ruleName: rule.name, blindSpot: true });
         continue;
       }
       ruleState[rule.id] = 'fired';
@@ -241,11 +241,11 @@ export function simulate(scenario, variantId, config, params) {
     const wait = queueWait(alert.rule, t);
     const pick = t + wait;
     at(pick, 0, tt => {
-      log(tt, 'human', 'Tier-1 analyst picks up the alert', `It waited ${fmtDuration(wait)} in the ${alert.rule.severity}-severity queue.`, { who: 'Tier-1' });
+      log(tt, 'human', 'Tier-1 analyst picks up the alert', `It waited ${fmtDuration(wait)} in the ${alert.rule.severity}-severity queue.`, { who: 'Tier-1', phase: 'triage' });
       const done = tt + params.t1Triage;
       addWork(done, params.t1Triage, 'Tier-1');
       at(done, 0, t2 => {
-        log(t2, 'human', 'Tier-1 escalates to Tier-2', alert.rule.triageNote ?? 'Looks malicious; needs investigation.', { who: 'Tier-1' });
+        log(t2, 'human', 'Tier-1 escalates to Tier-2', alert.rule.triageNote ?? 'Looks malicious; needs investigation.', { who: 'Tier-1', phase: 'escalated' });
         at(t2 + params.t2Wait, 0, humanInvestigate);
       });
     });
@@ -254,16 +254,16 @@ export function simulate(scenario, variantId, config, params) {
   function humanInvestigate(t) {
     const clear = S.case.alerts.some(a => a.rule.confidence === 'clear') || S.alerts.some(a => a.rule.confidence === 'clear' && a.t <= t);
     if (clear) {
-      log(t, 'human', 'Tier-2 investigates by hand', `Pivots across the identity provider, mailbox audit, and ${rootCauseIsHot() ? 'proxy logs' : 'other hot data'}, one console at a time.`, { who: 'Tier-2' });
+      log(t, 'human', 'Tier-2 investigates by hand', `Pivots across the identity provider, mailbox audit, and ${rootCauseIsHot() ? 'proxy logs' : 'other hot data'}, one console at a time.`, { who: 'Tier-2', phase: 'investigating' });
       const done = t + params.t2Clear;
       addWork(done, params.t2Clear, 'Tier-2');
       at(done, 0, humanContain);
     } else {
-      log(t, 'human', 'Tier-2 investigates by hand', L.ambiguousNote, { who: 'Tier-2' });
+      log(t, 'human', 'Tier-2 investigates by hand', L.ambiguousNote, { who: 'Tier-2', phase: 'investigating' });
       const asked = t + params.t2Unclear;
       addWork(asked, params.t2Unclear, 'Tier-2');
       at(asked, 0, tt => {
-        log(tt, 'human', `Tier-2 asks ${L.victim} to confirm`, `Waiting for a reply (${fmtDuration(params.userConfirmWait)}).`, { who: 'Tier-2' });
+        log(tt, 'human', `Tier-2 asks ${L.victim} to confirm`, `Waiting for a reply (${fmtDuration(params.userConfirmWait)}).`, { who: 'Tier-2', phase: 'waiting-user' });
         at(tt + params.userConfirmWait, 0, t3 => {
           log(t3, 'user', `${L.victim} replies: "That wasn't me"`, 'Tier-2 now has enough to act.');
           humanContain(t3);
@@ -277,7 +277,7 @@ export function simulate(scenario, variantId, config, params) {
       S.rootCauseAt = t;
       log(t, 'human', 'Tier-2 finds the root cause', `${L.rootCause} found in the proxy logs.`, { who: 'Tier-2' });
     }
-    log(t, 'human', 'Tier-2 runs the containment playbook', 'SOAR revokes sessions, resets the password, and removes inbox rules.', { who: 'Tier-2' });
+    log(t, 'human', 'Tier-2 runs the containment playbook', 'SOAR revokes sessions, resets the password, and removes inbox rules.', { who: 'Tier-2', phase: 'containing' });
     addWork(t + FIXED.playbookRun, FIXED.playbookHandsOn, 'Tier-2');
     at(t + FIXED.playbookRun, 0, tt => {
       contain(tt, 'SOAR playbook');
@@ -324,18 +324,18 @@ export function simulate(scenario, variantId, config, params) {
     addWork(done, params.writeUp, 'Tier-2');
     at(done, 0, tt => {
       S.caseClosedAt = tt;
-      log(tt, 'human', 'Case written up and closed', `By hand: ${fmtDuration(params.writeUp)}.`, { who: 'Tier-2' });
+      log(tt, 'human', 'Case written up and closed', `By hand: ${fmtDuration(params.writeUp)}.`, { who: 'Tier-2', phase: 'closed' });
     });
   }
 
   // ---- agentic SOC -----------------------------------------------------
   function approval(t, actions, title, onApproved) {
     const wait = isBusiness(t) ? params.approvalWait : params.approvalWaitOff;
-    log(t, 'agent', `Agent asks for approval: ${title}`, `Proposed: ${actions}. Each claim links to the evidence behind it.`, { approval: true });
+    log(t, 'agent', `Agent asks for approval: ${title}`, `Proposed: ${actions}. Each claim links to the evidence behind it.`, { approval: true, phase: 'awaiting-approval' });
     const ok = t + wait;
     addWork(ok, params.reviewMinutes, 'Analyst');
     at(ok, 0, tt => {
-      log(tt, 'human', 'Analyst reviews and approves', `Approval took ${fmtDuration(wait)} (${isBusiness(t) ? 'business hours' : 'off hours, on-call'}).`, { who: 'Analyst' });
+      log(tt, 'human', 'Analyst reviews and approves', `Approval took ${fmtDuration(wait)} (${isBusiness(t) ? 'business hours' : 'off hours, on-call'}).`, { who: 'Analyst', phase: 'approved' });
       at(tt + FIXED.agentAction, 0, onApproved);
     });
   }
@@ -349,7 +349,7 @@ export function simulate(scenario, variantId, config, params) {
     S.case = { openedAt: t, alerts: [alert] };
     const triaged = t + params.agentTriage;
     at(triaged, 0, tt => {
-      log(tt, 'agent', 'Agent triages immediately', alert.rule.agentTriageNote ?? 'No queue: every alert is triaged on arrival.');
+      log(tt, 'agent', 'Agent triages immediately', alert.rule.agentTriageNote ?? 'No queue: every alert is triaged on arrival.', { phase: 'triage' });
       // Kick off the cold search in parallel if the root cause isn't in hot data.
       if (S.rootCauseAt == null && !rootCauseIsHot() && rootEvent && S.happened[rootEvent.id] != null) {
         spend.push({ t: tt, usd: coldCost, what: 'root-cause search' });
@@ -422,7 +422,7 @@ export function simulate(scenario, variantId, config, params) {
       addWork(tt + params.reviewMinutes, params.reviewMinutes, 'Analyst');
       at(tt + params.reviewMinutes, 0, t2 => {
         S.caseClosedAt = t2;
-        log(t2, 'human', 'Analyst reviews and closes the case', 'Hands-on time is reading, not writing.', { who: 'Analyst' });
+        log(t2, 'human', 'Analyst reviews and closes the case', 'Hands-on time is reading, not writing.', { who: 'Analyst', phase: 'closed' });
       });
     });
   }

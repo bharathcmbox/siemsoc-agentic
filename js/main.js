@@ -6,6 +6,7 @@ import { renderSummary } from './ui/summary.js';
 import { renderParams } from './ui/params.js';
 import { openRoutingInfo, openRoutingInfoFirstTime } from './ui/routing-info.js';
 import { h, usd } from './ui/dom.js';
+import { buildBeats, createNarrator } from './ui/narrator.js';
 
 const cfg = (arch, model, routing = false) => ({ arch, model, routing });
 const PRESETS = [
@@ -23,7 +24,7 @@ const state = {
   sides: [cfg('index', 'traditional'), cfg('index', 'agentic')],
   results: [null, null], extras: [null, null],
   params: defaultParams(),
-  clock: 0, start: 0, end: 0, playing: false, speed: 24, forceReveal: false, lastMinute: null, revealed: null,
+  clock: 0, start: 0, end: 0, playing: false, pauseAtBeats: true, speed: 24, forceReveal: false, lastMinute: null, revealed: null,
 };
 
 // ---------- URL hash (shareable links) ----------
@@ -92,6 +93,7 @@ function runAll() {
   scrub.min = state.start; scrub.max = state.end; scrub.step = 1;
   state.clock = Math.min(Math.max(state.clock, state.start), state.end);
   panels.forEach((p, i) => { p.setConfig(state.sides[i]); p.setResult(state.results[i], state.extras[i]); });
+  narrator.setBeats(buildBeats(state.results[0], state.results[1]));
   state.lastMinute = null;
   state.revealed = null;
   render();
@@ -106,13 +108,14 @@ function render() {
     $('clock').textContent = fmtTime(minute);
     $('scrub').value = minute;
     panels.forEach(p => p.update(minute));
+    narrator.update(minute);
   }
   const revealed = state.forceReveal || state.clock >= state.end;
   if (revealed !== state.revealed) {
     state.revealed = revealed;
     renderSummary($('summary'), state.results[0], state.results[1], revealed, () => { state.forceReveal = true; render(); }, state.extras);
   }
-  $('play').textContent = state.playing ? '❚❚ Pause' : state.clock >= state.end ? '↺ Replay' : '▶ Play';
+  $('play').textContent = state.playing ? '❚❚ Pause' : state.clock >= state.end ? '↺ Replay' : state.clock > state.start ? '▶ Continue' : '▶ Play';
 }
 
 function renderIntro() {
@@ -136,7 +139,10 @@ let lastFrame = null;
 function frame(ts) {
   if (!state.playing) { lastFrame = null; return; }
   if (lastFrame != null) {
+    const prev = state.clock;
     state.clock += ((ts - lastFrame) / 1000) * state.speed;
+    const beat = state.pauseAtBeats && narrator.beatTimes().find(t => t > prev && t <= state.clock && t < state.end);
+    if (beat) { state.clock = beat; state.playing = false; }
     if (state.clock >= state.end) { state.clock = state.end; state.playing = false; }
   }
   lastFrame = ts;
@@ -156,6 +162,11 @@ const panels = [
   createPanel($('side-a'), 'A', { onConfig: c => onSideConfig(0, c), onInfo: showInfo }),
   createPanel($('side-b'), 'B', { onConfig: c => onSideConfig(1, c), onInfo: showInfo }),
 ];
+
+const narrator = createNarrator($('narrator'), {
+  onTogglePause: on => { state.pauseAtBeats = on; },
+  onJump: t => { pause(); state.clock = t; render(); },
+});
 
 function routingInfo() {
   const c = monthlyCost('tiered', true, state.params);

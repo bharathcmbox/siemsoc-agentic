@@ -117,6 +117,7 @@ The view works like this:
 
 ## 6. Explainer layers
 
+- **Narrator** (built in the MVP): at each key moment, one or two sentences comparing what each side is doing, generated from the two simulation results. Playback can pause at each moment so a presenter can talk over it.
 - **Guided tour** with captions at key moments, including preset comparisons: "Classic vs Tiered (human SOC)", "Tiered human vs Tiered agentic", "Tiered agentic, routing off vs on", and "Classic human vs Lake agentic + routing".
 - **Architecture view:** an animated data flow through pipeline → tiers/lake → SIEM detection → SOAR → agents → human. Clicking a component explains what it does.
 - **Inside the agent** (§5).
@@ -154,7 +155,7 @@ index.html            entry point
 ## 9. Phases
 
 1. **Concepts and assumptions:** the primer (SIEM, SOAR, pipelines, data architectures, agentic SOC, agent design), the metrics and cost model, scenarios 1 and 2 scripted on paper.
-2. **MVP:** the engine with both selectors and the detection-aware routing toggle (including its info panel), the split view and timeline, scenarios 1 and 2 (including the hunting agent), and the executive summary card. *Review checkpoint.*
+2. **MVP:** the engine with both selectors and the detection-aware routing toggle (including its info panel), the split view and timeline, a narrator that explains each key moment and how the two sides differ (with optional pause at each moment), scenarios 1 and 2 (including the hunting agent), and the executive summary card. *Review checkpoint.*
 3. **Ingestion and architecture views:** the animated diagram, the routing and data-cleaning visuals, and scenario 5.
 4. **Depth:** the "Inside the agent" view (generalist vs specialist team), guided tour presets, the honest section, the vendor-questions card, and scenarios 3 and 4.
 5. **Polish and publish:** mobile layout, GitHub Pages setup, and README.

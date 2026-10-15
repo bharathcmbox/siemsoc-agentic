@@ -89,10 +89,10 @@ header.top p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 }
 
 /* ---------- controls ---------- */
-@media (max-width: 600px) { .controls { position: static !important; } }
+.sticky { position: sticky; top: 0; z-index: 5; padding-top: 8px; background: var(--bg); }
+@media (max-width: 600px) { .sticky { position: static; } }
 .controls {
-  position: sticky; top: 0; z-index: 5;
-  margin: 12px 0;
+  margin: 4px 0 8px;
   padding: 10px 12px;
   display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center;
 }
@@ -113,6 +113,21 @@ header.top p { margin: 4px 0 0; color: var(--muted); max-width: 70ch; }
 .btn:focus-visible, select:focus-visible, input:focus-visible, .seg button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .clock { font: 600 1.15rem var(--mono); min-width: 6.5ch; text-align: right; }
 .scrub { flex: 1 1 140px; min-width: 80px; accent-color: var(--accent); }
+
+/* ---------- narrator ---------- */
+.narrator { padding: 10px 14px; margin-bottom: 12px; border-left: 4px solid var(--accent); }
+.nar-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; font-size: 0.85rem; }
+.nar-time { font-family: var(--mono); color: var(--muted); }
+.nar-pause { margin-left: auto; display: flex; align-items: center; gap: 6px; color: var(--muted); cursor: pointer; }
+.nar-text { margin-top: 4px; max-height: 9.5em; overflow-y: auto; }
+.nar-text p { margin: 2px 0; font-size: 0.95rem; }
+.nar-text.flash { animation: fresh 1.2s ease-out; border-radius: 6px; }
+@media (prefers-reduced-motion: reduce) { .nar-text.flash { animation: none; } }
+.nar-details { margin-top: 4px; font-size: 0.8rem; }
+.nar-details summary { cursor: pointer; color: var(--accent); }
+.nar-history { margin: 6px 0 0; padding-left: 0; list-style: none; max-height: 30vh; overflow-y: auto; }
+.nar-history li { padding: 4px 0; border-top: 1px solid var(--border); color: var(--muted); }
+.nar-jump { font: 0.78rem var(--mono); border: 1px solid var(--border); background: var(--surface-2); border-radius: 6px; padding: 0 6px; cursor: pointer; color: var(--text); }
 
 /* ---------- scenario intro ---------- */
 .intro { padding: 14px 16px; margin-bottom: 12px; }
