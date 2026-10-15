@@ -1,4 +1,4 @@
-# siemsoc-study
+# siemsoc-agentic
 
 A personal study project covering SIEM (Security Information and Event Management) and SOC (Security Operations Center) concepts.
 
@@ -14,7 +14,7 @@ An interactive, vendor-neutral simulator that runs the same attack through two s
 
 Nothing to install. The app is plain HTML, CSS and JavaScript.
 
-- **On GitHub Pages:** in the repo's Settings → Pages, choose *Deploy from a branch*, then `main` / `(root)`. The simulator will be at `https://bharathcmbox.github.io/siemsoc-study/`.
+- **On GitHub Pages:** in the repo's Settings → Pages, choose *Deploy from a branch*, then `main` / `(root)`. The simulator will be at `https://bharathcmbox.github.io/siemsoc-agentic/`.
 - **Locally (optional):** run `python3 -m http.server` in this folder and open http://localhost:8000. Opening `index.html` directly from disk won't work, because browsers block loading the scenario files that way.
 
 The URL updates as you change settings, so you can share a link to a specific comparison.

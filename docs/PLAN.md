@@ -133,7 +133,7 @@ The view works like this:
 
 ## 8. Tech approach: runs straight from GitHub
 
-- **Hosting:** GitHub Pages, set to deploy from branch `main`, at `https://<user>.github.io/siemsoc-study/`. No install, build step, or GitHub Actions needed.
+- **Hosting:** GitHub Pages, set to deploy from branch `main`, at `https://<user>.github.io/siemsoc-agentic/`. No install, build step, or GitHub Actions needed.
 - **Code:** plain HTML, CSS and JavaScript (ES modules). No framework, bundler, or `package.json`.
 - **Third-party libraries:** pinned copies stored in `/vendor/` if needed, so nothing depends on a CDN at runtime.
 - **Data:** scenarios are JSON files.
