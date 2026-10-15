@@ -100,7 +100,7 @@
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 18px; height: 8px; border-radius: 4px; display: inline-block; }
 
-.player { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.player { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
 .play { width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--ink); color: var(--surface); display: grid; place-items: center; flex: none; cursor: pointer; }
 .play svg { width: 20px; height: 20px; }
 .x-clock { font-size: 1.5rem; font-weight: 700; min-width: 4.2ch; line-height: 1.2; }
@@ -111,7 +111,7 @@
 .pausebox { display: inline-flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--muted); margin-left: auto; cursor: pointer; }
 .pausebox input { width: 16px; height: 16px; accent-color: var(--a); }
 
-.caption { margin-top: 18px; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: start; }
+.caption { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: start; }
 .cap-step { border: 1px solid var(--line); background: var(--surface); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--muted); cursor: pointer; }
 .cap-step:disabled { opacity: 0.35; cursor: default; }
 .caption .text { min-width: 0; }
