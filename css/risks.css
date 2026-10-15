@@ -7,9 +7,9 @@
 .r-n { display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 50%; background: var(--soft); color: var(--muted); font-size: 0.82rem; font-weight: 700; margin-right: 10px; vertical-align: 2px; }
 
 /* ---------- home band ---------- */
-.risk-band { margin-top: 40px; display: grid; gap: 14px; }
-.r-band-head h2 { font-size: 1.4rem; font-weight: 700; margin: 0; }
-.r-band-head p { margin: 4px 0 0; color: var(--muted); }
+.risk-band { margin-top: 48px; padding-top: 32px; border-top: 1px solid var(--line); display: grid; gap: 14px; }
+.r-band-head h2 { font-size: clamp(1.6rem, 2.8vw, 2rem); line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; margin: 0; color: var(--detect); }
+.r-band-head p { margin: 6px 0 0; color: var(--muted); font-size: 1.05rem; }
 .r-band-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
 @media (max-width: 1000px) { .r-band-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .r-band-grid { grid-template-columns: 1fr; } }
