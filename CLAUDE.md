@@ -8,7 +8,8 @@ A personal study project: an **Agentic SOC simulator** that shows executives and
 
 All five planned phases are built and live at **https://bharathcmbox.github.io/siemsoc-agentic/** (GitHub Pages, deployed from `main`, root folder).
 
-- **Executive view (default):** six stories → race view (two teams on one clock) → plain-language caption, scoreboard, verdict.
+- **Executive view (default):** six stories → race view → plain-language caption, scoreboard, verdict.
+  - **Race view, top to bottom:** the story's question and intro; "ways to watch this story" cards when it has more than one comparison; the race box (play controls, the two lanes on one clock with an amber "Attack begins" flag, legend, caption).
 - **Deeper views on every story:**
   - **Where they appear:** cards under the race, plus caption links at the moments they explain.
   - **Inside the agent:** the AI team's steps as one agent or a team of specialists.
@@ -26,7 +27,7 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 - `js/engine/cost.js`: routing, budget cap, and monthly cost
 - `js/engine/assumptions.js`: every slider parameter, mirrored in `docs/assumptions.md`
 - `js/ui/`:
-  - `exec.js`: home, race view, explore cards, caption links, scoreboard, verdict, glossary
+  - `exec.js`: home, race view, "ways to watch" cards, explore cards, caption links, scoreboard, verdict, glossary
   - `narrator.js`: comparative "beats" built from both results. A beat can carry `links` (`{ kind: 'agent' | 'pipeline', side, label }`), which the race view shows as caption links
   - `agent-view.js`: "Inside the agent", showing one agent or a team of specialists
   - `panel.js`, `diagram.js`, `pipeline.js`, `summary.js`, `params.js`, `routing-info.js`: analyst view pieces
@@ -57,7 +58,7 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 
 1. Write `scenarios/<id>.json`, including the full `labels` set (copy the keys from an existing scenario), a `plain` name for every rule, and a `pipelineDemo` for the attacker's key event.
 2. Add it to `scenarios/index.json`.
-3. Add a story to `js/stories.js` with team names.
+3. Add a story to `js/stories.js` with team names. If it has more than one comparison, give each a `chapter` and a `teaser`.
 4. Write `docs/scenarios/<id>.md` with engine-output results.
 5. Update the README in two places: the story's direct link (`#story=<storyId>`) under "Stories", and the write-up under "Scenario write-ups".
 
