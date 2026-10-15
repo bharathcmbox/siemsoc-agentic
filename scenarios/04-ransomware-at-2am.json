@@ -1,0 +1,185 @@
+{
+  "id": "04-ransomware-at-2am",
+  "date": "2026-03-14",
+  "start": "00:30",
+  "end": "06:30",
+  "firstMaliciousEvent": "E1",
+  "rootCauseEvent": "E1",
+  "title": "Ransomware at 2 a.m.",
+  "short": "4 · Ransomware at 2 a.m.",
+  "oneLiner": "Late on a Friday night, an attacker signs in to the VPN with a contractor's stolen password, steals an administrator password, and heads for the file servers to launch ransomware.",
+  "teaching": "Ransomware gangs work nights and weekends because fewer people are watching. One on-call analyst works the queue slowly; automatic isolation kicks in only once encryption starts. An AI agent works at 2 a.m. as it does at 2 p.m., and only needs a person to approve.",
+  "labels": {
+    "victim": "the jump server",
+    "victimFull": "Jump server",
+    "rootCause": "A contractor's stolen password let the attacker in through the VPN, which doesn't require a second factor for contractors",
+    "attackSummary": "an attacker is inside the network and preparing ransomware",
+    "hotEvidence": "a VPN sign-in from a new country, followed by a password-stealing tool on the jump server",
+    "ambiguousNote": "A contractor signing in from abroad could be travel. The on-call analyst checks before waking anyone.",
+    "objectiveImpact": "Encryption has started on the file servers, and the backups are gone. Some company data is now locked.",
+    "undetected": "No alert fired at any point.",
+    "mitre": "T1078 valid accounts, T1003 credential dumping, T1021 remote services, T1490 inhibit system recovery, T1486 data encrypted for impact",
+    "accessCut": "the jump server was cut off and the contractor account disabled",
+    "lureGone": "the attack was blocked",
+    "indicatorBlocked": "the attacker's VPN address was blocked",
+    "containDone": "The contractor account is disabled, and the jump server and every server it reached are cut off from the network",
+    "blockTitle": "Attacker's address blocked",
+    "blockDone": "the attacker's address is blocked at the VPN",
+    "revokeDone": "Additional systems isolated",
+    "scopeSearch": "other systems the attacker reached",
+    "scopeTitle": "Other systems checked",
+    "scopeFound": "Reached by the attacker",
+    "scopeLost": "Still active",
+    "scopeNoneLost": "No other system is still under the attacker's control.",
+    "humanPivot": "Pages the on-call engineer and pulls VPN and server logs, one console at a time.",
+    "confirmAsk": "Tier-2 tries to reach the contractor",
+    "confirmReply": "The contractor's manager confirms: \"He's asleep at home, not abroad\"",
+    "playbook": "SOAR disables the account and isolates the servers.",
+    "rootMissingNote": "Nobody checks how the attacker got in.",
+    "rootSearch": "VPN sign-in history",
+    "fullFinding": "The attacker came in through the VPN and hasn't reached the file servers yet.",
+    "fullPackage": "disable the contractor account; cut off the jump server; block the attacker's VPN address",
+    "containPackage": "disable the contractor account; cut off the jump server",
+    "blockPackage": "block the attacker's VPN address",
+    "revokeVerb": "isolate",
+    "pivotTitle": "Agent checks the VPN logs",
+    "pivotText": "The sign-in came from a country the contractor has never connected from.",
+    "huntSame": "Finds the same intrusion.",
+    "linkedNote": "Same account, same attacker.",
+    "objectiveShort": "Ransomware encrypted files",
+    "objectiveStatus": "ransomware started encrypting files",
+    "accessLabel": "Attacker inside",
+    "accessNever": "never got in",
+    "compromisedLabel": "Compromised systems",
+    "secondVictim": "the attacker reached the file servers before anyone acted",
+    "indicatorKind": "stolen contractor password"
+  },
+  "events": [
+    {
+      "id": "E1",
+      "time": "01:20",
+      "actor": "attacker",
+      "source": "idp",
+      "compromises": "Jump server",
+      "contact": "Jump server",
+      "accessStart": true,
+      "title": "Attacker signs in to the VPN with a contractor's stolen password",
+      "summary": "Contractor accounts on this VPN only need a password. The attacker connects to a jump server used for maintenance.",
+      "raw": {
+        "class_name": "Authentication",
+        "time": "2026-03-14T06:20:44Z",
+        "status": "Success",
+        "user": {
+          "name": "ext.m.ortiz@halvorsen.example",
+          "type": "contractor"
+        },
+        "auth_protocol": "VPN",
+        "src_endpoint": {
+          "ip": "203.0.113.201",
+          "location": {
+            "country": "BR"
+          }
+        },
+        "mfa": {
+          "required": false
+        }
+      }
+    },
+    {
+      "id": "E2",
+      "time": "01:35",
+      "actor": "attacker",
+      "source": "edr",
+      "requires": [
+        "attackerAccess"
+      ],
+      "title": "Attacker runs a password-stealing tool on the jump server",
+      "summary": "Grabs an administrator password left in memory."
+    },
+    {
+      "id": "E3",
+      "time": "02:15",
+      "actor": "attacker",
+      "source": "edr",
+      "requires": [
+        "attackerAccess"
+      ],
+      "compromises": "14 file servers",
+      "containedWithPrimary": true,
+      "contact": "14 file servers",
+      "title": "Attacker signs in to 14 file servers with the stolen admin password",
+      "summary": "Moves quietly from server to server."
+    },
+    {
+      "id": "E4",
+      "time": "02:40",
+      "actor": "attacker",
+      "source": "edr",
+      "requires": [
+        "access:14 file servers"
+      ],
+      "title": "Backups deleted",
+      "summary": "The attacker deletes the backup snapshots so the company can't simply restore."
+    },
+    {
+      "id": "E5",
+      "time": "03:00",
+      "actor": "attacker",
+      "source": "edr",
+      "requires": [
+        "access:14 file servers"
+      ],
+      "objective": true,
+      "title": "Encryption starts",
+      "summary": "Thousands of files a minute are renamed and locked on the file servers."
+    }
+  ],
+  "rules": [
+    {
+      "id": "R-VPN",
+      "name": "VPN sign-in from a new country for this account",
+      "plain": "the check for VPN sign-ins from an unusual place",
+      "logic": "An account signs in to the VPN from a country it has never used.",
+      "needs": [
+        "E1"
+      ],
+      "severity": "medium",
+      "confidence": "ambiguous",
+      "triageNote": "A contractor signing in from a new country, at night.",
+      "agentTriageNote": "A contractor account signing in from a new country at 1 a.m., to a server it rarely uses. Investigating."
+    },
+    {
+      "id": "R-CRED",
+      "name": "Password-stealing tool detected",
+      "plain": "the check for password-stealing tools",
+      "logic": "A known credential-dumping technique on a server.",
+      "needs": [
+        "E2"
+      ],
+      "severity": "high",
+      "confidence": "clear",
+      "triageNote": "A password-stealing tool on the jump server. Someone is inside.",
+      "agentTriageNote": "Password theft on the same server the contractor just signed in to."
+    },
+    {
+      "id": "R-RANSOM",
+      "name": "Mass file renaming (ransomware behavior)",
+      "plain": "the check for ransomware-style mass file changes",
+      "logic": "Thousands of files renamed per minute on several servers.",
+      "needs": [
+        "E5"
+      ],
+      "severity": "high",
+      "confidence": "clear",
+      "autoContain": true,
+      "autoContainNote": "The endpoint security tool sees thousands of files renamed per minute and isolates the servers on its own."
+    }
+  ],
+  "defaultPreset": "model",
+  "variants": [
+    {
+      "id": "default",
+      "label": "As scripted"
+    }
+  ]
+}

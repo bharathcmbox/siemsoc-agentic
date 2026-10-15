@@ -77,6 +77,27 @@ export function simulate(scenario, variantId, config, params) {
     return m >= FIXED.businessStart && m < FIXED.businessEnd;
   };
 
+  // ---- alert storm ------------------------------------------------------
+  // A burst of false alarms. Traditional analysts work the queue first in,
+  // first out at a fixed capacity; agents triage every alert as it arrives.
+  let storm = null;
+  if (scenario.noise) {
+    const N = scenario.noise;
+    const s0 = parseTime(N.start), s1 = parseTime(N.end);
+    const arrived = t => (t < s0 ? 0 : t >= s1 ? N.count : Math.floor((N.count * (t - s0)) / (s1 - s0)));
+    const processedBy = [];
+    let p = 0;
+    for (let m = 0; s0 + m <= end + 1440; m++) {
+      const t = s0 + m;
+      const perMin = (params.analystsOnShift / params.t1Triage) * (isBusiness(t) ? 1 : 1 / params.offHoursQueueMultiplier);
+      p = Math.min(arrived(t), p + perMin);
+      processedBy.push(p);
+      if (p >= N.count) break;
+    }
+    const at2 = m => processedBy[Math.min(m, processedBy.length - 1)];
+    storm = { ...N, start: s0, end: s1, arrived, processedBy, processedAt: t => (t < s0 ? 0 : at2(t - s0)) };
+  }
+
   // ---- state -----------------------------------------------------------
   const timeline = [];
   const work = [];      // { t, min, who } human hands-on minutes, credited at t
@@ -192,6 +213,12 @@ export function simulate(scenario, variantId, config, params) {
       severity: rule.severity, rule: rule.id, ruleName: rule.name, rulePlain: rule.plain ?? rule.name,
       badges: [sev, ...(promoted ? ['Promoted by routing'] : []), ...(fromHunt ? ['Scheduled sweep'] : [])],
     });
+    if (rule.autoContain && S.containedAt == null) {
+      at(t + 1, 0, tt => {
+        log(tt, 'detect', 'Automatic response isolates the machines', rule.autoContainNote ?? 'The security tool isolates the affected machines on its own, without waiting for a person.', { auto: true });
+        contain(tt, 'automatic response');
+      });
+    }
     if (model === 'agentic') agentOnAlert(t, alert); else humanOnAlert(t, alert);
   }
 
@@ -246,25 +273,32 @@ export function simulate(scenario, variantId, config, params) {
   // ---- traditional (human) SOC ----------------------------------------
   function queueWait(rule, t) {
     const base = rule.severity === 'high' ? params.queueHigh : params.queueMedium;
-    return isBusiness(t) ? base : base * params.offHoursQueueMultiplier;
+    const normal = isBusiness(t) ? base : base * params.offHoursQueueMultiplier;
+    if (!storm || t < storm.start || rule.severity === 'high') return normal;
+    // First in, first out behind the storm: wait until everything that
+    // arrived before this alert has been worked.
+    const ahead = storm.arrived(t);
+    const done = storm.processedBy.findIndex(p => p >= ahead);
+    const fifo = done < 0 ? Infinity : storm.start + done - t;
+    return Math.max(normal, fifo);
   }
 
   function humanOnAlert(t, alert) {
-    if (S.case) {
-      // Correlated within 5 minutes of case creation → same queue item.
-      if (t - S.case.openedAt <= 5) { S.case.alerts.push(alert); return; }
-      const pick = t + queueWait(alert.rule, t);
-      at(pick, 0, tt => {
-        addWork(tt + FIXED.dupAlertHandsOn, FIXED.dupAlertHandsOn, 'Tier-1');
-        log(tt, 'human', `A Tier-1 analyst picks up the ${alert.rule.id} alert`, `After ${fmtDuration(pick - t)} in the queue. Discovers it's already part of an open case. Nobody had linked them.`, { who: 'Tier-1' });
-      });
-      return;
-    }
-    S.case = { openedAt: t, alerts: [alert] };
+    if (S.case && t - S.case.openedAt <= 5) { S.case.alerts.push(alert); return; } // correlated: same queue item
+    if (!S.case) S.case = { openedAt: t, alerts: [] };
+    S.case.alerts.push(alert);
+    // Every alert waits in the queue on its own. Whichever is picked up first
+    // starts the case; later pickups discover it's already being handled.
     const wait = queueWait(alert.rule, t);
     const pick = t + wait;
     at(pick, 0, tt => {
-      log(tt, 'human', 'Tier-1 analyst picks up the alert', `It waited ${fmtDuration(wait)} in the ${alert.rule.severity}-severity queue.`, { who: 'Tier-1', phase: 'triage' });
+      if (S.case.started) {
+        addWork(tt + FIXED.dupAlertHandsOn, FIXED.dupAlertHandsOn, 'Tier-1');
+        log(tt, 'human', `A Tier-1 analyst picks up the ${alert.rule.id} alert`, `After ${fmtDuration(wait)} in the queue. Discovers it's already part of an open case. Nobody had linked them.`, { who: 'Tier-1' });
+        return;
+      }
+      S.case.started = true;
+      log(tt, 'human', 'Tier-1 analyst picks up the alert', `It waited ${fmtDuration(wait)} in the ${alert.rule.severity}-severity queue${storm && t >= storm.start && alert.rule.severity !== 'high' ? ', behind the alert storm' : ''}.`, { who: 'Tier-1', phase: 'triage', rule: alert.rule.id, rulePlain: alert.rule.plain ?? alert.rule.name, waited: wait });
       const done = tt + params.t1Triage;
       addWork(done, params.t1Triage, 'Tier-1');
       at(done, 0, t2 => {
@@ -300,7 +334,11 @@ export function simulate(scenario, variantId, config, params) {
       S.rootCauseAt = t;
       log(t, 'human', 'Tier-2 finds the root cause', `${L.rootCause}.`, { who: 'Tier-2' });
     }
-    log(t, 'human', 'Tier-2 runs the containment playbook', L.playbook, { who: 'Tier-2', phase: 'containing' });
+    if (S.containedAt != null) {
+      log(t, 'human', 'Tier-2 confirms the automatic isolation held', 'Checks the isolated systems and takes over the case.', { who: 'Tier-2', phase: 'containing' });
+    } else {
+      log(t, 'human', 'Tier-2 runs the containment playbook', L.playbook, { who: 'Tier-2', phase: 'containing' });
+    }
     addWork(t + FIXED.playbookRun, FIXED.playbookHandsOn, 'Tier-2');
     at(t + FIXED.playbookRun, 0, tt => {
       contain(tt, 'SOAR playbook');
@@ -474,6 +512,32 @@ export function simulate(scenario, variantId, config, params) {
         log(t, 'detect', 'Scheduled sweep runs', `${scenario.hunt.name}. An automated nightly search; the first time anything has looked for this in the stored data.`, { sweep: true });
         raiseAlert(t + 1, { ...scenario.hunt.asRule }, false, true);
       });
+    }
+  }
+
+  // ---- storm bookkeeping ---------------------------------------------------
+  if (storm) {
+    log(storm.start, 'detect', 'An alert storm begins', `${storm.title}: ${storm.count} alerts in ${fmtDuration(storm.end - storm.start)}.`, { storm: true, count: storm.count });
+    if (model === 'traditional') {
+      const perHour = Math.round((60 * params.analystsOnShift) / params.t1Triage);
+      for (let t = storm.start + 30; t <= end; t += 30) {
+        const waiting = Math.round(storm.arrived(t) - storm.processedAt(t));
+        if (waiting <= 0) break;
+        log(t, 'human', `Queue: about ${waiting} alerts waiting`, `${params.analystsOnShift} Tier-1 analysts are working through the storm one alert at a time, about ${perHour} an hour.`, { who: 'Tier-1', queueSize: waiting });
+      }
+      for (let t = storm.start + 30; t <= end + 30; t += 30) {
+        const tt = Math.min(t, end);
+        const n = storm.processedAt(tt) - storm.processedAt(tt - 30);
+        if (n > 0) work.push({ t: tt, min: n * params.t1Triage, who: 'Tier-1' });
+        if (tt === end) break;
+      }
+    } else {
+      const k = Math.round((storm.count * params.spotCheckShare) / 100);
+      log(storm.start + 2, 'agent', 'Agent triages every storm alert as it arrives', 'No queue builds up, so nothing waits behind the storm.');
+      if (storm.end + 2 <= end) {
+        log(storm.end + 2, 'agent', `Agent closes ${storm.count} storm alerts as harmless`, `${storm.agentReason} A person spot-checked ${k} of them.`);
+        if (k) work.push({ t: storm.end + 2 + k, min: k, who: 'Analyst' });
+      }
     }
   }
 

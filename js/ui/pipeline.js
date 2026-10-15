@@ -72,6 +72,12 @@ function volumeBars(result, params) {
 export function openPipeline(scenario, result, params, sideName) {
   if (!dialog) build();
   const demo = scenario.pipelineDemo;
+  if (!demo) {
+    body.replaceChildren(h('h2', {}, 'Inside the pipeline'), h('p', {}, "This story doesn't have a step-by-step event walk-through yet. Here's where the day's volume ends up for this setup."),
+      volumeBars(result, params), h('div', { class: 'close-row' }, h('button', { type: 'button', class: 'btn primary', onclick: () => dialog.close() }, 'Done')));
+    if (!dialog.open) dialog.showModal();
+    return;
+  }
   let step = 0;
   const content = h('div');
   const tabs = h('div', { class: 'steps', role: 'tablist' });

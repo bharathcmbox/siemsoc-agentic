@@ -1,6 +1,6 @@
 # Agentic SOC Simulator — Plan
 
-Status: approved (rev 6). Phases 1–4 built. Phase 4 redesigned the app for executives; the original detailed view lives behind the "Analyst view" switch.
+Status: approved (rev 7). Phases 1–5 built. Phase 4 redesigned the app for executives; the original detailed view lives behind the "Analyst view" switch.
 
 ## 1. Goal and audience
 
@@ -91,8 +91,8 @@ All scenarios are deterministic, scripted JSON files. There are no live LLM call
    - **Quiet-attacker variant:** if the attacker never creates the forwarding rule, nothing fires in real time on tiered or lake. A nightly scheduled sweep of cold data (an ordinary automated job, available to both teams) is the first detection, about 17 hours later. Today's team contains it at 04:38 after the overnight queue; the agentic team at 02:43. Both are too late to stop the fraud request or the second compromise.
    - **Takeaway:** the agent shortens the time from alert to containment and widens the scope of what gets found. It **can't move the first alert earlier**, though. Only routing and detection engineering can do that, and a scheduled sweep can only partly make up for it, hours later.
    - **With detection-aware routing on:** newly-registered-domain hits get promoted to the hot tier, so the early alert fires at 09:14 on tiered and lake too. That adds only about $31 a month in hot-tier cost. Combined with the agentic model, this gives the best outcome at close to the cheapest cost.
-3. **Alert storm:** one real threat hidden in 500 false positives, showing how alert fatigue lets a real threat slip through.
-4. **Ransomware precursor:** lateral movement, then a mass file rename, racing against the clock.
+3. **Alert storm:** one real threat hidden in 400 false alarms from a misconfigured scanner. See `docs/scenarios/03-alert-storm.md`.
+4. **Ransomware at 2 a.m.:** stolen contractor password, password theft, lateral movement, backups deleted, encryption, all off hours. See `docs/scenarios/04-ransomware-at-2am.md`.
 5. **The budget and the noisy source (ingestion cost):** under a monthly SIEM budget cap, index-at-ingest has to stop collecting firewall and DNS logs; tiered storage keeps them, and routing makes them useful in real time. The attack is malware calling home to a known C2 server, then source-code theft. See `docs/scenarios/05-budget-and-the-noisy-source.md`.
 
 ## 5. Agent architecture: the "Inside the agent" view
@@ -165,4 +165,9 @@ index.html            entry point
    - **Verdict:** plain takeaways, "What AI agents can get wrong" with guardrails, questions to ask a vendor, and a copyable link.
    - **Analyst view switch:** the Phase 2–3 detailed view, sharing the same state, so any custom comparison also plays in the executive view.
    - **Look:** dark by default with a light option; a calm neutral palette; the Figtree font bundled in `vendor/fonts` (SIL Open Font License); a glossary of plain definitions.
-5. **Depth (next):** the "Inside the agent" view (generalist vs specialist team), scenarios 3 (alert storm) and 4 (ransomware precursor), and any further polish.
+5. **Depth:** *Built.*
+   - **Scenario 3, the alert storm:** 400 false alarms against a fixed number of analysts working in order; the agent triages every alert as it arrives, with spot-checks. See `docs/scenarios/03-alert-storm.md`.
+   - **Scenario 4, ransomware at 2 a.m.:** off-hours queue and approvals; today's team also gets automatic isolation on mass file changes. See `docs/scenarios/04-ransomware-at-2am.md`.
+   - **"Inside the agent":** the agentic side's real steps shown as one generalist agent or a team of specialists (triage, investigation, response, reporting) with orchestrator handoffs, permissions, and a numbered record. Opened from the verdict or the Analyst view.
+   - **Engine:** every alert queues on its own (the first one picked up starts the case); alert-storm capacity model; rules can trigger automatic isolation.
+   - **Six stories** on the home screen.

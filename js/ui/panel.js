@@ -18,7 +18,7 @@ function segmented(options, onPick, label) {
   };
 }
 
-export function createPanel(root, name, { onConfig, onInfo, onPipeline }) {
+export function createPanel(root, name, { onConfig, onInfo, onPipeline, onAgent }) {
   let config;
   let result;
   let items = [];
@@ -44,6 +44,8 @@ export function createPanel(root, name, { onConfig, onInfo, onPipeline }) {
   const archBody = h('div');
   const archBox = h('details', { class: 'arch-wrap', open: true }, h('summary', {}, 'Architecture'), archBody);
   const diagram = createDiagram(archBody, { onPipeline: () => onPipeline(name) });
+  const agentBtn = h('button', { type: 'button', class: 'btn small', onclick: () => onAgent(name) }, 'Inside the agent →');
+  archBody.querySelector('.arch-foot').append(agentBtn);
   const list = h('ol', { class: 'timeline', 'aria-label': `Side ${name} timeline` });
 
   root.append(
@@ -103,6 +105,7 @@ export function createPanel(root, name, { onConfig, onInfo, onPipeline }) {
       model.set(cfg.model);
       const disabled = cfg.arch === 'index';
       routingInput.checked = cfg.routing && !disabled;
+      agentBtn.hidden = cfg.model !== 'agentic';
       routingInput.disabled = disabled;
       routingBox.classList.toggle('disabled', disabled);
       routingNote.textContent = disabled ? 'Not needed here: with index-at-ingest, everything is already in the hot tier.' : '';

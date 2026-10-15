@@ -153,6 +153,24 @@
 .glossary dd { margin: 0; color: var(--muted); }
 @media (max-width: 520px) { .glossary dl { grid-template-columns: 1fr; } .glossary dd { margin-bottom: 6px; } }
 
+/* ---------- inside the agent ---------- */
+.agent-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 18px; margin-top: 12px; }
+@media (max-width: 760px) { .agent-grid { grid-template-columns: 1fr; } }
+.agent-list { max-height: 52vh; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
+.agent-steps { list-style: none; margin: 0; padding: 0; }
+.agent-steps li { display: grid; grid-template-columns: 5.6em auto 1fr auto; gap: 8px; align-items: baseline; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 0.85rem; }
+.agent-steps li:last-child { border-bottom: 0; }
+.agent-steps .t { color: var(--muted); font-size: 0.78rem; }
+.agent-steps .what { display: grid; min-width: 0; }
+.agent-steps .touch { color: var(--muted); font-size: 0.78rem; }
+.agent-steps .audit { color: var(--muted); font-size: 0.72rem; font-family: var(--mono); }
+.agent-steps li.handoff { grid-template-columns: 5.6em 1fr; color: var(--muted); font-style: italic; background: var(--soft); }
+.role { display: inline-block; font-size: 0.72rem; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--role); color: var(--role); white-space: nowrap; }
+.agent-perms h3 { font-size: 0.95rem; margin: 0 0 6px; }
+.agent-perms h3 + ul { margin-bottom: 14px; }
+.agent-perms ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; font-size: 0.85rem; }
+@media (max-width: 520px) { .agent-steps li { grid-template-columns: 1fr auto; } .agent-steps .t { grid-column: 1 / -1; } }
+
 /* ---------- analyst view wrapper ---------- */
 .analyst-intro { margin: 10px 0 0; padding: 10px 14px; border-radius: 10px; background: var(--soft); color: var(--muted); font-size: 0.88rem; }
 

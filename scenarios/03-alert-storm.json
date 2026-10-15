@@ -1,0 +1,165 @@
+{
+  "id": "03-alert-storm",
+  "date": "2026-03-18",
+  "start": "08:30",
+  "end": "17:00",
+  "firstMaliciousEvent": "E1",
+  "rootCauseEvent": "E1",
+  "title": "The alert storm",
+  "short": "3 \u00b7 The alert storm",
+  "oneLiner": "A misconfigured vulnerability scanner floods the security queue with 400 false alarms. In the middle of it, a real attacker guesses an HR employee's password and heads for the payroll files.",
+  "teaching": "Alert fatigue is a capacity problem. Four analysts working in order can't get through 400 alerts in a morning, so the one real alert waits for hours. AI agents look at every alert as it arrives, so the real one doesn't wait behind the noise.",
+  "noise": {
+    "start": "09:00",
+    "end": "11:00",
+    "count": 400,
+    "title": "A misconfigured vulnerability scanner sets off \"repeated failed sign-in\" alerts on 400 servers",
+    "agentReason": "Every one came from the company's own vulnerability scanner, and none ended in a successful sign-in."
+  },
+  "labels": {
+    "victim": "Lee",
+    "victimFull": "Lee Chen's account",
+    "rootCause": "A password-spraying attack tried common passwords against 300 accounts from one overseas address, and Lee Chen's weak password was the one that worked",
+    "attackSummary": "an attacker guessed Lee Chen's password and signed in from abroad",
+    "hotEvidence": "a successful sign-in from abroad right after hundreds of failed guesses against many accounts",
+    "ambiguousNote": "In the middle of the storm, this looks like one more failed-sign-in alert. The analyst checks the account history before deciding.",
+    "objectiveImpact": "Payroll data for 5,000 employees, including bank details, has been copied out.",
+    "undetected": "No alert fired at any point.",
+    "mitre": "T1110.003 password spraying, T1078 valid accounts, T1039 data from network shared drive, T1567 exfiltration over web service",
+    "accessCut": "Lee's account was locked",
+    "lureGone": "the attack was blocked",
+    "indicatorBlocked": "the attacker's address was blocked",
+    "containDone": "Lee Chen's account is locked, the password reset, and every active session ended",
+    "blockTitle": "Attacker's address blocked",
+    "blockDone": "the attacker's address is blocked at the VPN and firewall",
+    "revokeDone": "Additional accounts locked",
+    "scopeSearch": "other accounts the attacker got into",
+    "scopeTitle": "Other accounts checked",
+    "scopeFound": "Successful guesses",
+    "scopeLost": "Also broken into",
+    "scopeNoneLost": "No other guessed password worked.",
+    "humanPivot": "Pulls the account's sign-in history and the VPN logs, one console at a time.",
+    "confirmAsk": "Tier-2 calls Lee to ask about the sign-in",
+    "confirmReply": "Lee replies: \"I'm in the office, not abroad\"",
+    "playbook": "SOAR locks the account, resets the password, and ends active sessions.",
+    "rootMissingNote": "Nobody checks which other accounts were targeted.",
+    "rootSearch": "sign-in failures across all accounts",
+    "fullFinding": "The same address tried 300 accounts; only Lee's guess worked.",
+    "fullPackage": "lock Lee Chen's account, reset the password, and end sessions; block the attacker's address",
+    "containPackage": "lock Lee Chen's account, reset the password, and end sessions",
+    "blockPackage": "block the attacker's address",
+    "revokeVerb": "lock",
+    "pivotTitle": "Agent checks the other failed sign-ins",
+    "pivotText": "The same overseas address tried 300 accounts in 20 minutes.",
+    "huntSame": "Finds the same attack.",
+    "linkedNote": "Same account, same attacker.",
+    "objectiveShort": "Payroll data stolen",
+    "objectiveStatus": "payroll data stolen",
+    "accessLabel": "Attacker signed in",
+    "accessNever": "never got in",
+    "compromisedLabel": "Compromised accounts",
+    "secondVictim": "another guessed password still worked",
+    "indicatorKind": "password-spraying attack"
+  },
+  "events": [
+    {
+      "id": "E1",
+      "time": "09:20",
+      "actor": "attacker",
+      "source": "idp",
+      "title": "Password spraying from one overseas address",
+      "summary": "From one overseas address, the attacker tries a few common passwords against 300 accounts. The failures look just like the storm."
+    },
+    {
+      "id": "E2",
+      "time": "09:41",
+      "actor": "attacker",
+      "source": "idp",
+      "compromises": "Lee Chen's account",
+      "contact": "Lee Chen's account",
+      "accessStart": true,
+      "title": "One guess works: the attacker signs in as Lee Chen",
+      "summary": "Lee works in HR and used a weak password. The sign-in comes from abroad.",
+      "raw": {
+        "class_name": "Authentication",
+        "time": "2026-03-18T14:41:07Z",
+        "status": "Success",
+        "user": {
+          "name": "lee.chen@halvorsen.example"
+        },
+        "src_endpoint": {
+          "ip": "198.51.100.140",
+          "location": {
+            "country": "RO"
+          }
+        },
+        "auth_protocol": "VPN",
+        "mfa": {
+          "required": false
+        },
+        "enrichment": {
+          "failed_attempts_from_ip_last_30m": 612,
+          "distinct_accounts_tried": 300
+        }
+      }
+    },
+    {
+      "id": "E3",
+      "time": "10:30",
+      "actor": "attacker",
+      "source": "cloud",
+      "requires": [
+        "attackerAccess"
+      ],
+      "title": "Attacker browses the HR file share",
+      "summary": "Finds folders of payroll exports."
+    },
+    {
+      "id": "E4",
+      "time": "13:30",
+      "actor": "attacker",
+      "source": "cloud",
+      "requires": [
+        "attackerAccess"
+      ],
+      "objective": true,
+      "title": "Payroll data for 5,000 employees downloaded",
+      "summary": "Names, salaries, and bank details leave the network."
+    }
+  ],
+  "rules": [
+    {
+      "id": "R-SPRAY",
+      "name": "Successful sign-in after many failures, from a new country",
+      "plain": "the check for a successful sign-in right after many failures",
+      "logic": "An account signs in successfully from a new country right after a burst of failed attempts.",
+      "needs": [
+        "E2"
+      ],
+      "severity": "medium",
+      "confidence": "ambiguous",
+      "triageNote": "One account succeeded after many failures, from a new country. Different from the scanner noise.",
+      "agentTriageNote": "Unlike the storm alerts, this one came from outside the company and ended in a successful sign-in from a new country. Not scanner traffic. Investigating."
+    },
+    {
+      "id": "R-DL",
+      "name": "Large download from the HR share",
+      "plain": "the check for large downloads from sensitive shares",
+      "logic": "Gigabytes copied from a sensitive file share by one account.",
+      "needs": [
+        "E4"
+      ],
+      "severity": "high",
+      "confidence": "clear",
+      "triageNote": "4 GB copied from the HR share by Lee Chen's account. That's not normal.",
+      "agentTriageNote": "A large download from the HR share by an account already under investigation."
+    }
+  ],
+  "defaultPreset": "model",
+  "variants": [
+    {
+      "id": "default",
+      "label": "As scripted"
+    }
+  ]
+}

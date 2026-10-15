@@ -33,7 +33,10 @@ function statusAt(R, t) {
   const agentic = R.config.model === 'agentic';
   const last = [...R.timeline].reverse().find(e => e.phase && e.t <= t);
   switch (last?.phase) {
-    case undefined: return `the alert has been waiting for an analyst since ${clock12(m.firstAlertAt)}`;
+    case undefined: {
+      const q = [...R.timeline].reverse().find(e => e.queueSize && e.t <= t);
+      return q ? `the alert is waiting behind about ${q.queueSize} storm alerts` : `the alert has been waiting for an analyst since ${clock12(m.firstAlertAt)}`;
+    }
     case 'triage': return agentic ? 'the AI agent is investigating' : 'an analyst is looking at the alert';
     case 'escalated': return 'handed to a senior analyst, waiting to be picked up';
     case 'investigating': return 'a senior analyst is investigating by hand, one system at a time';
@@ -63,6 +66,15 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   const first = A.timeline.find(e => e.t === t0 && e.lane === 'attacker');
   if (first) add(t0, `The attack begins: ${first.title}. Neither team has any reason to notice yet.`);
 
+  // 1b. Alert storm.
+  const st = A.timeline.find(e => e.storm);
+  if (st) {
+    const how = r => (r.config.model === 'agentic'
+      ? 'an AI agent looks at every alert as it arrives'
+      : 'a few analysts work through them in order');
+    add(st.t, `An alert storm begins: ${st.count} false alarms in a couple of hours. For ${N[0]}, ${how(A)}; for ${N[1]}, ${how(B)}.`);
+  }
+
   // 2. Checks that stay silent.
   const supp = A.timeline.find(e => e.missed && !e.blindSpot);
   if (supp && B.timeline.some(e => e.missed && !e.blindSpot && e.rule === supp.rule)) {
@@ -85,7 +97,7 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   });
 
   // 3. First alerts.
-  const alertEntry = r => r.timeline.find(e => e.lane === 'detect' && !e.missed && !e.sweep);
+  const alertEntry = r => r.timeline.find(e => e.lane === 'detect' && e.title.startsWith('Alert:'));
   const fa = R.map(r => r.metrics.firstAlertAt);
   const how = e => ((e.badges ?? []).includes('Scheduled sweep') ? ' It came from the nightly scheduled search of stored data, not in real time.'
     : (e.badges ?? []).includes('Promoted by routing') ? ' It worked because smart routing sent a copy of the suspicious event to real-time detection.' : '');
@@ -104,17 +116,20 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   R.forEach((r, i) => {
     const e = r.timeline.find(x => x.phase === 'triage');
     if (!e || r.metrics.firstAlertAt == null) return;
-    const wait = e.t - r.metrics.firstAlertAt;
+    const wait = e.waited ?? e.t - r.metrics.firstAlertAt;
+    const firstRule = alertEntry(r)?.rule;
     const text = r.config.model === 'agentic'
       ? `${poss(N[i])} AI agent picked up the alert ${fmtDuration(wait)} after it fired. There's no waiting list, and it gathers evidence from every system at once.`
-      : `${N[i]}: an analyst opens the alert after ${fmtDuration(wait)} waiting in the queue.`;
+      : e.rule && firstRule && e.rule !== firstRule
+        ? `${N[i]}: an analyst finally opens the case, but only because ${e.rulePlain} fired and jumped the queue. The original alert is still waiting.`
+        : `${N[i]}: an analyst opens the alert after ${fmtDuration(wait)} waiting in the queue.`;
     add(e.t, `${text} ${N[1 - i]}: ${statusAt(other(i), e.t)}.`);
   });
 
   // 5. Decision to stop the attacker.
   R.forEach((r, i) => {
     const e = r.timeline.find(x => x.phase === 'awaiting-approval' || x.phase === 'containing');
-    if (!e) return;
+    if (!e || (r.metrics.containedAt != null && r.metrics.containedAt <= e.t)) return;
     const text = e.phase === 'awaiting-approval'
       ? `${poss(N[i])} AI agent has gathered the evidence and asks a person to approve stopping the attacker. Big actions always wait for a human.`
       : `${poss(N[i])} analysts have enough evidence and start the automated steps to stop the attacker.`;
@@ -132,7 +147,8 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
     const caveat = !left.length ? '' : handledLater
       ? ` ${left.join(' and ')} ${left.length > 1 ? 'are' : 'is'} also compromised and will be dealt with next.`
       : ` But ${left.join(' and ')} ${left.length > 1 ? 'are' : 'is'} still compromised, and ${N[i]} hasn't noticed.`;
-    add(t, `${N[i]} stops the attacker${left.length ? ' everywhere it has found so far' : ''}.${caveat}${oc ? '' : ` For ${N[1 - i]}, the attacker is still active (${statusAt(o, t)}).`}`);
+    const auto = r.timeline.some(e => e.auto && e.t === t);
+    add(t, `${N[i]} stops the attacker${left.length ? ' everywhere it has found so far' : ''}${auto ? ', but only because the security tool isolated the servers automatically when it saw the encryption' : ''}.${caveat}${oc ? '' : ` For ${N[1 - i]}, the attacker is still active (${statusAt(o, t)}).`}`);
   });
 
   // 7. Attacker steps that happen on one side but were prevented on the other.
@@ -162,7 +178,8 @@ export function buildBeats(A, B, names = ['Side A', 'Side B']) {
   R.forEach((r, i) => {
     const t = r.metrics.caseClosedAt;
     if (t == null) return;
-    add(t, `${N[i]} closes the case. People-time spent: ${work(r, t)} min for ${N[i]}, ${work(other(i), t)} min so far for ${N[1 - i]}.`);
+    const fm = n => (n >= 120 ? `${Math.round(n / 6) / 10} hours` : `${n} min`);
+    add(t, `${N[i]} closes the case. People-time spent: ${fm(work(r, t))} for ${N[i]}, ${fm(work(other(i), t))} so far for ${N[1 - i]}.`);
   });
 
   // 10. End.

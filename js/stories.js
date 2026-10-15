@@ -49,6 +49,26 @@ export const STORIES = [
     ],
   },
   {
+    id: 'storm', scenario: '03-alert-storm', variant: 'default', icon: 'storm',
+    question: 'Can your team find one real attack in 400 false alarms?',
+    hook: 'A misconfigured scanner floods the queue just as a real attacker gets in. Who notices?',
+    oneLiner: "A misconfigured scanner sets off 400 false alarms in two hours. In the middle of it, an attacker guesses an HR employee's password and heads for the payroll files.",
+    comparisons: [
+      { id: 'team', label: "Today's team vs AI-assisted team", a: cfg('index', 'traditional'), b: cfg('index', 'agentic'),
+        names: [{ ...TODAY, sub: 'Four analysts work the queue in order' }, { ...AI, sub: 'AI agents look at every alert as it arrives' }] },
+    ],
+  },
+  {
+    id: 'ransomware', scenario: '04-ransomware-at-2am', variant: 'default', icon: 'moon',
+    question: 'Ransomware at 2 a.m.: who is awake?',
+    hook: 'An attacker gets in late on a Friday night and heads for the file servers. It is a race against the clock.',
+    oneLiner: "Late on a Friday night, an attacker signs in with a contractor's stolen password, steals an administrator password, and heads for the file servers to launch ransomware.",
+    comparisons: [
+      { id: 'team', label: "Today's team vs AI-assisted team", a: cfg('index', 'traditional'), b: cfg('index', 'agentic'),
+        names: [{ ...TODAY, sub: 'One on-call analyst overnight; automatic isolation switched on' }, { ...AI, sub: 'AI agents around the clock; the on-call person approves' }] },
+    ],
+  },
+  {
     id: 'budget', scenario: '05-budget-and-the-noisy-source', variant: 'default', icon: 'budget',
     question: 'Same budget, smarter design?',
     oneLiner: "An engineer installs a booby-trapped app. It quietly connects to an attacker's server, and the attacker moves on to a build server to steal source code. The security budget for log data is capped at $15,000 a month.",

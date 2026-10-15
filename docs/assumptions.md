@@ -2,7 +2,7 @@
 
 Every number the simulator displays is derived from the parameters below. **All defaults are illustrative**, chosen to be plausible for a mid-sized enterprise, not measured from any product. Each will be exposed as a slider in the exec summary card so viewers can plug in their own values.
 
-The `Source` column says `Illustrative` unless a public source has been verified. Where a figure is commonly cited but not yet verified for this project, it is marked `To verify` — do not present those as sourced until checked.
+The `Source` column says `Illustrative` unless a public source has been checked; checked figures say `Sourced` and link to where they came from (see §9).
 
 ---
 
@@ -14,7 +14,6 @@ The `Source` column says `Illustrative` unless a public source has been verified
 | SOC analysts on shift (business hours) | 4 | 1 – 20 | Illustrative |
 | SOC analysts on shift (off hours) | 1 | 0 – 10 | Illustrative |
 | Alerts per day reaching the queue | 800 | 100 – 10,000 | Illustrative |
-| Share of alerts that are false positives | 90% | 50 – 99% | To verify (industry surveys commonly report a large majority) |
 
 ## 2. Log volume by source (per day)
 
@@ -56,8 +55,8 @@ Expressed as a blended monthly cost, not any vendor's price list.
 | Hot indexed tier — cost per GB ingested | $2.00 | $0.50 – $6.00 | Illustrative (blended license + infra) |
 | Cheap tier — cost per GB ingested | $0.15 | $0.02 – $0.50 | Illustrative |
 | Cheap tier — cost per search job | $5 | $0 – $50 | Illustrative |
-| Data lake — object storage per GB-month | $0.023 | $0.01 – $0.05 | To verify (typical public-cloud standard object storage list price) |
-| Data lake — query cost per TB scanned | $5 | $1 – $10 | To verify (typical serverless query-engine list price) |
+| Data lake — object storage per GB-month | $0.023 | $0.01 – $0.05 | Sourced: major public clouds list standard object storage at about $0.020–$0.023 per GB-month in US regions (§9) |
+| Data lake — query cost per TB scanned | $5 | $1 – $10 | Sourced: a major cloud's serverless query engine lists $5 per TB scanned (§9) |
 | Data lake — cost per investigation query (a typical scan of ~0.3 TB) | $1.50 | $0 – $20 | Illustrative, derived from the row above |
 | Data lake — compression ratio (columnar files) | 5× | 2× – 10× | Illustrative |
 | Retention (all tiers) | 90 days hot / 365 days cheap & lake | | Illustrative |
@@ -78,6 +77,7 @@ With defaults, that gives about **$42,000** (index-at-ingest), **$12,900** (tier
 | Queue wait before an alert is picked up (high severity) | 20 min | 5 – 120 min | Illustrative |
 | Queue wait (medium severity, business hours) | 90 min | 15 – 480 min | Illustrative |
 | Off-hours queue wait multiplier | 4× | 1 – 8× | Illustrative |
+| Tier-1 analysts on shift (business hours; off hours divides capacity by the off-hours multiplier) | 4 | 1 – 20 | Illustrative |
 | Tier-1 triage time per alert | 10 min | 3 – 30 min | Illustrative |
 | Wait for Tier-2 to pick up an escalation | 20 min | 5 – 120 min | Illustrative |
 | Tier-2 investigation until containment decision, clear-cut alert | 45 min | 15 – 240 min | Illustrative |
@@ -100,6 +100,7 @@ Business hours are 08:00–18:00.
 | Agent triage time per alert | 2 min | 0.5 – 5 min | Illustrative |
 | Agent investigation time (hot data only) | 8 min | 3 – 20 min | Illustrative |
 | Human review per approval or report | 5 min | 1 – 15 min | Illustrative |
+| Share of auto-closed alerts a person spot-checks (1 min each) | 5% | 0 – 50% | Illustrative |
 | Time for approved actions to execute (fixed) | 2 min | | Illustrative |
 | Human approval wait (business hours) | 10 min | 1 – 60 min | Illustrative |
 | Human approval wait (off hours, on-call) | 30 min | 5 – 120 min | Illustrative |
@@ -140,9 +141,20 @@ Latency is identical for humans and agents. The difference the simulator shows i
 
 ## 8. Open items
 
-- [ ] Verify the two `To verify` storage/query prices against current public list prices, or relabel as Illustrative.
-- [ ] Find a citable public source for false-positive share and alert volume (e.g. annual SOC surveys); otherwise keep Illustrative.
-- [ ] Decide whether queue wait should be computed from a simple queue model (alerts/day vs analyst throughput) instead of fixed defaults.
-- [ ] §1 organization profile (headcount, alerts/day, false-positive share) isn't used by the engine yet. It becomes relevant for the alert-storm scenario.
+- [x] Storage and query prices checked against public list prices (October 2026); see §9. Re-check yearly.
+- [x] Removed the false-positive share: the engine never used it. The alert-storm scenario sets its false-alarm count directly.
+- [ ] Queue waits outside an alert storm are still fixed defaults; only the storm uses a capacity model (analysts on shift × triage time). Consider using the capacity model everywhere.
+- [ ] §1 employees and alerts per day are context only; the engine doesn't read them.
+
+## 9. Sources
+
+Checked October 2026. Cloud prices change; re-check before quoting them.
+
+| Figure | What was found | Where |
+|---|---|---|
+| Object storage, per GB-month | About $0.023 for the first 50 TB of standard storage in US East at one major cloud; about $0.020–$0.022 for standard storage in US regions at another. The default uses the upper figure. | [S3 pricing guide (Upstash, 2026)](https://upstash.com/blog/aws-s3-pricing-explained-2026), [S3 pricing (Devzero, from the provider's price list API)](https://www.devzero.io/blog/aws-s3-pricing), [Cloud Storage pricing (official)](https://cloud.google.com/storage/pricing). The first provider's official page ([aws.amazon.com/s3/pricing](https://aws.amazon.com/s3/pricing/)) did not render its table when checked. |
+| Query cost, per TB scanned | $5 per TB scanned, confirmed on the official pricing page. Another major cloud's on-demand price is about $6.25 per TiB (not re-checked). | [Athena pricing (official)](https://aws.amazon.com/athena/pricing/) |
+
+These are cited as evidence for the order of magnitude. The simulator itself stays vendor-neutral and names no products.
 
 All slider parameters are defined in `js/engine/assumptions.js`. Keep that file and this document in sync.

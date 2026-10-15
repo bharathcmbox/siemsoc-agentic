@@ -28,6 +28,7 @@ export const PARAMS = [
   { id: 'queueHigh',        group: 'human', label: 'Queue wait, high-severity alert', unit: 'min', min: 5, max: 120, step: 5, value: 20 },
   { id: 'queueMedium',      group: 'human', label: 'Queue wait, medium-severity alert', unit: 'min', min: 15, max: 480, step: 15, value: 90 },
   { id: 'offHoursQueueMultiplier', group: 'human', label: 'Off-hours queue wait multiplier', unit: '×', min: 1, max: 8, step: 0.5, value: 4 },
+  { id: 'analystsOnShift',  group: 'human', label: 'Tier-1 analysts on shift (business hours)', unit: '', min: 1, max: 20, step: 1, value: 4 },
   { id: 't1Triage',         group: 'human', label: 'Tier-1 triage per alert', unit: 'min', min: 3, max: 30, step: 1, value: 10 },
   { id: 't2Wait',           group: 'human', label: 'Wait for Tier-2 to pick up', unit: 'min', min: 5, max: 120, step: 5, value: 20 },
   { id: 't2Clear',          group: 'human', label: 'Tier-2 investigation, clear-cut alert', unit: 'min', min: 15, max: 240, step: 5, value: 45 },
@@ -43,6 +44,7 @@ export const PARAMS = [
   { id: 'agentInvestigate', group: 'agent', label: 'Agent investigation (hot data)', unit: 'min', min: 3, max: 20, step: 1, value: 8 },
   { id: 'approvalWait',     group: 'agent', label: 'Human approval wait, business hours', unit: 'min', min: 1, max: 60, step: 1, value: 10 },
   { id: 'approvalWaitOff',  group: 'agent', label: 'Human approval wait, off hours', unit: 'min', min: 5, max: 120, step: 5, value: 30 },
+  { id: 'spotCheckShare',   group: 'agent', label: 'Share of auto-closed alerts a person spot-checks', unit: '%', min: 0, max: 50, step: 1, value: 5 },
   { id: 'reviewMinutes',    group: 'agent', label: 'Human review per approval / report', unit: 'min', min: 1, max: 15, step: 1, value: 5 },
 
   // Detection on cold data (an automated job; available to both operating models)

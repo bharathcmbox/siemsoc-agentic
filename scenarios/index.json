@@ -8,6 +8,14 @@
     "short": "2 · Where did the evidence go?"
   },
   {
+    "id": "03-alert-storm",
+    "short": "3 · The alert storm"
+  },
+  {
+    "id": "04-ransomware-at-2am",
+    "short": "4 · Ransomware at 2 a.m."
+  },
+  {
     "id": "05-budget-and-the-noisy-source",
     "short": "5 · The budget and the noisy source"
   }
