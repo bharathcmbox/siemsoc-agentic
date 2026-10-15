@@ -28,6 +28,11 @@ The URL updates as you change settings, so you can share a link to a specific co
 - [Plan](docs/PLAN.md)
 - [Primer: from traditional SOC to agentic SOC](docs/primer.md)
 - [Metrics and cost assumptions](docs/assumptions.md)
-- Scenarios: [1 — Phishing to BEC](docs/scenarios/01-phishing-to-bec.md) · [2 — Where did the evidence go?](docs/scenarios/02-where-did-the-evidence-go.md) · [3 — The alert storm](docs/scenarios/03-alert-storm.md) · [4 — Ransomware at 2 a.m.](docs/scenarios/04-ransomware-at-2am.md) · [5 — The budget and the noisy source](docs/scenarios/05-budget-and-the-noisy-source.md)
+- Scenarios:
+  - [1 — Phishing to BEC](docs/scenarios/01-phishing-to-bec.md)
+  - [2 — Where did the evidence go?](docs/scenarios/02-where-did-the-evidence-go.md) (includes the quiet-attacker variant)
+  - [3 — The alert storm](docs/scenarios/03-alert-storm.md)
+  - [4 — Ransomware at 2 a.m.](docs/scenarios/04-ransomware-at-2am.md)
+  - [5 — The budget and the noisy source](docs/scenarios/05-budget-and-the-noisy-source.md)
 
 All companies, people, domains and numbers are fictional or illustrative.
