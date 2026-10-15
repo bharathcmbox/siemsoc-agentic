@@ -66,10 +66,12 @@ const GLOSSARY = [
 export function renderHome(root, { onStory }) {
   root.replaceChildren(
     h('section', { class: 'hero' },
-      h('h1', {}, "See how an AI-assisted security team handles the same attack as today's team."),
-      h('p', {}, "Pick a story. Two teams face the same attack, side by side, on the same clock. You'll see when each one notices, when each one stops the attacker, and what it costs."),
-      h('p', { class: 'how' }, icon('clock'), 'Each story takes a few minutes. Pause whenever you like; the scoreboard keeps up.'),
-      h('p', { class: 'how' }, icon('agent'), 'Inside every story: see how the AI agent works, and how a log line becomes evidence.'),
+      h('div', { class: 'hero-main' },
+        h('h1', {}, "See how an AI-assisted security team handles the same attack as today's team."),
+        h('p', {}, "Pick a story. Two teams face the same attack, side by side, on the same clock. You'll see when each one notices, when each one stops the attacker, and what it costs.")),
+      h('div', { class: 'hero-how' },
+        h('p', { class: 'how' }, icon('clock'), 'Each story takes a few minutes. Pause whenever you like; the scoreboard keeps up.'),
+        h('p', { class: 'how' }, icon('agent'), 'Inside every story: see how the AI agent works, and how a log line becomes evidence.')),
     ),
     h('section', { class: 'stories', 'aria-label': 'Stories' },
       STORIES.map(s => h('button', { class: 'story', type: 'button', onclick: () => onStory(s.id) },
