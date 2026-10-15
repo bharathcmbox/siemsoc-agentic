@@ -4,6 +4,8 @@
 
 **Exec one-liner:** Not indexing everything saves real money — but it moves where your blind spots are. An agentic SOC recovers most of the *response* time, and finds more victims, but it can't make the first alert happen any earlier. That's a routing and detection-engineering decision.
 
+> **Source of truth:** the simulation engine (`js/engine/simulate.js`). The minute-by-minute tables below were the design input; the engine's output differs from them by a few minutes in places. The summary tables show engine output with default assumptions (`node tests/run-all.mjs`).
+
 Cast, infrastructure, and objective are the same as [scenario 1](01-phishing-to-bec.md).
 
 ---
@@ -73,7 +75,7 @@ Same as Run B until 13:10. The lake query takes ~3 min instead of 20, so the dom
 | 09:53–10:03 | Human reviews and approves | On-shift analyst | 5 |
 | **10:05** | **Contained** | SOAR (driven by agent) | |
 | 10:12 | Cheap-tier results: `halvorsen-login.example`, 3 days old, visited at 09:12 → root cause is AiTM phishing | Agent | |
-| 10:10 | Priya clicks the link | Attacker | |
+| 10:15 | Priya clicks the link | Employee | |
 | 10:12–10:14 | Email logs (hot): same domain in a message to 12 recipients | Agent | |
 | 10:14 | Second cheap-tier search: who else resolved the domain? ($5; total $10 of $50) | Agent | |
 | 10:34 | Results: Dana and Priya. IdP: Priya never signed in → no credentials lost | Agent | |
@@ -86,7 +88,7 @@ Same as Run B until 13:10. The lake query takes ~3 min instead of 20, so the dom
 
 ## Run E — Federated / lake, Agentic
 
-Same as Run D, but with 3-minute lake queries instead of 20-minute cheap-tier jobs. The lake query starts at 09:52 and returns the root cause at 09:55, **before** containment instead of after. So at 09:56 the agent proposes everything in one package: revoke sessions, remove the rule, block the domain, purge the emails. The human approves at 10:06, and everything is executed by **10:08**, two minutes before Priya's 10:10 click. Query cost depends on data scanned; the default model gives about $1–2.
+Same as Run D, but with 3-minute lake queries instead of 20-minute cheap-tier jobs. The lake query starts at 09:52 and returns the root cause at 09:55, **before** containment instead of after. So at 09:56 the agent proposes everything in one package: revoke sessions, remove the rule, block the domain, purge the emails. The human approves at 10:06, and everything is executed by **10:08**, before Priya's 10:15 click. Query cost depends on data scanned; the default model gives about $1–2.
 
 ---
 
@@ -98,7 +100,7 @@ The attacker skips the forwarding rule (E5) and only reads mail. **No real-time 
 |---|---|
 | Index-at-ingest, either model | R-NRD at 09:14 |
 | Tiered / lake, traditional, no hunt team | **None.** Discovered when the fraud is noticed by finance — days later |
-| Tiered / lake, agentic with hunting agent | H-NRD at **02:00 next day** — ~17 hours later. Too late to stop the fraud request; in time to cut off ongoing mailbox access and protect Sam |
+| Tiered / lake, agentic with hunting agent | H-NRD at **02:01 next day**, about 17 hours later. Contained at 02:43 after an off-hours approval. Too late to stop the fraud request or Sam's compromise; it does cut off the attacker's ongoing access |
 
 **This is the clearest illustration of the main point:** an agent can only investigate what something prompts it to look at. Proactive hunting partly makes up for routing choices, on a schedule. Routing evidence to where real-time detection can see it is what actually moves MTTD.
 
@@ -109,12 +111,12 @@ The attacker skips the forwarding rule (E5) and only reads mail. **No real-time 
 | Metric | A: Index / Trad | B: Tiered / Trad | C: Lake / Trad | D: Tiered / Agentic | E: Lake / Agentic |
 |---|---|---|---|---|---|
 | First alert | 09:14 | 09:48 | 09:48 | 09:48 | 09:48 |
-| Contained | 10:57 | 12:40 | 12:40 | 10:05 | 10:08 |
-| Root cause found | 09:14 (in alert) | 13:30 | 13:13 | 10:12 | 09:55 |
+| Contained | 10:51 | 12:45 | 12:45 | 10:10 | 10:10 |
+| Root cause found | 09:14 (in alert) | 13:35 | 13:18 | 10:10 | 09:53 |
 | Fraud request sent | No | **Yes** | **Yes** | No | No |
 | Compromised users | 1 | **2** | **2** | 1 | 1 |
-| Analyst hands-on min | ~138 | ~150 | ~150 | ~13 | ~10 |
-| Monthly data cost* | ~$42,000 | ~$12,900 | ~$11,400 | ~$12,900 | ~$11,400 |
+| Analyst hands-on min | 110 | 135 | 135 | 15 | 10 |
+| Monthly data cost* | $42,000 | $12,863 | $11,381 | $12,863 | $11,381 |
 
 \* Steady-state monthly cost from the `assumptions.md` defaults, after 30% pipeline reduction:
 - **Index-at-ingest:** all 700 GB/day goes to the hot tier.
@@ -138,10 +140,10 @@ This is the constructive answer to message 4. The pipeline enriches each DNS/pro
 
 | Run | Plays out like | First alert | Contained | Fraud sent | Compromised users | Monthly data cost |
 |---|---|---|---|---|---|---|
-| B+ Tiered / Trad + routing | Run A | 09:14 | 10:57 | No | 1 | ~$12,900 (+~$17) |
-| C+ Lake / Trad + routing | Run A | 09:14 | 10:57 | No | 1 | ~$11,400 (+~$17) |
-| D+ Tiered / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | ~$12,900 (+~$17) |
-| E+ Lake / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | ~$11,400 (+~$17) |
+| B+ Tiered / Trad + routing | Run A | 09:14 | 10:51 | No | 1 | $12,879 |
+| C+ Lake / Trad + routing | Run A | 09:14 | 10:51 | No | 1 | $11,398 |
+| D+ Tiered / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | $12,879 |
+| E+ Lake / Agentic + routing | Scenario 1 Run B | 09:14 | 09:36 | No | 1, and the attacker never reaches the mailbox | $11,398 |
 
 The **quiet attacker** (variant 2b) is also caught at 09:14 with the toggle on, because the alert no longer depends on the forwarding rule.
 

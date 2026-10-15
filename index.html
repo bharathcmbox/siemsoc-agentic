@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentic SOC Simulator</title>
+  <meta name="description" content="A vendor-neutral simulator comparing traditional and agentic security operations, across different SIEM data architectures.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 4 7v8c0 7.5 5.1 13.4 12 15 6.9-1.6 12-7.5 12-15V7z' fill='%232f5bd3'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <h1>Agentic SOC Simulator</h1>
+      <p>One attack, two security operations setups, side by side. Choose where each side keeps its data and who does the work, then press play.</p>
+    </header>
+
+    <div class="controls card" role="region" aria-label="Simulation controls">
+      <label class="field">Scenario <select id="scenario"></select></label>
+      <label class="field" id="variant-field">Variant <select id="variant"></select></label>
+      <label class="field">Compare <select id="preset"></select></label>
+      <div class="playback">
+        <button class="btn primary" id="play" type="button">▶ Play</button>
+        <select id="speed" aria-label="Playback speed">
+          <option value="8">1×</option>
+          <option value="24" selected>3×</option>
+          <option value="80">10×</option>
+        </select>
+        <input class="scrub" id="scrub" type="range" aria-label="Simulation time">
+        <span class="clock" id="clock" aria-live="off">--:--</span>
+        <button class="btn" id="end" type="button">Skip to end</button>
+      </div>
+    </div>
+
+    <section class="intro card" id="intro" aria-live="polite"></section>
+
+    <div class="sides">
+      <section class="side card" id="side-a" aria-label="Side A"></section>
+      <section class="side card" id="side-b" aria-label="Side B"></section>
+    </div>
+
+    <section class="block card" id="summary" aria-live="polite"></section>
+    <section class="block card" id="params"></section>
+
+    <footer>
+      A vendor-neutral study project. All companies, people, domains and numbers are fictional or illustrative.
+      Read the <a href="https://github.com/bharathcmbox/siemsoc-study/blob/main/docs/primer.md">primer</a>, the <a href="https://github.com/bharathcmbox/siemsoc-study/blob/main/docs/assumptions.md">assumptions</a>, and the <a href="https://github.com/bharathcmbox/siemsoc-study/blob/main/docs/PLAN.md">plan</a>.
+    </footer>
+  </div>
+  <noscript><p class="wrap">This simulator needs JavaScript.</p></noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

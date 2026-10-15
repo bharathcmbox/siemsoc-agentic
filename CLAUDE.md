@@ -6,14 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A personal study project building an **Agentic SOC simulator**: an interactive web app that shows executives and other readers how an Agentic SOC differs from a traditional one, and how ingestion pipelines, SIEM, and SOAR fit together. `docs/PLAN.md` is the source of truth for scope and phases.
 
-Current phase: **Phase 1 (concepts and assumptions) — docs only, no code yet.**
+Current phase: **Phase 2 MVP built** (on branch `phase-1`), awaiting review.
 
 ## Layout
 
 - `docs/PLAN.md` — approved plan (scope, phases, tech approach)
 - `docs/primer.md` — vendor-neutral concepts primer the app's explanations draw from
 - `docs/assumptions.md` — every parameter behind the simulator's metrics and costs
-- `docs/scenarios/*.md` — scenario scripts that will be turned into `scenarios/*.json`
+- `docs/scenarios/*.md` — scenario scripts (design input; the engine is the source of truth for timings)
+- `index.html`, `css/styles.css` — the single-page app
+- `js/engine/` — `simulate.js` (discrete-event simulation of one SOC configuration), `cost.js` (routing + monthly cost), `assumptions.js` (every parameter, mirrored in `docs/assumptions.md`)
+- `js/ui/` — side panel, executive summary, assumption sliders, routing info dialog; `js/main.js` wires state, playback, presets, and the shareable URL hash
+- `scenarios/*.json` — scenario data: attacker events, detection rules, labels, variants
+- `tests/run-all.mjs` — dev-only check (needs Node): `node tests/run-all.mjs` prints metrics for every scenario × configuration; `node tests/run-all.mjs --timeline <scenarioId> <variant> <arch> <model> <on|off>` prints one timeline
 
 ## Constraints
 

@@ -53,6 +53,7 @@ Expressed as a blended monthly cost, not any vendor's price list.
 | Cheap tier — cost per search job | $5 | $0 – $50 | Illustrative |
 | Data lake — object storage per GB-month | $0.023 | $0.01 – $0.05 | To verify (typical public-cloud standard object storage list price) |
 | Data lake — query cost per TB scanned | $5 | $1 – $10 | To verify (typical serverless query-engine list price) |
+| Data lake — cost per investigation query (a typical scan of ~0.3 TB) | $1.50 | $0 – $20 | Illustrative, derived from the row above |
 | Data lake — compression ratio (columnar files) | 5× | 2× – 10× | Illustrative |
 | Retention (all tiers) | 90 days hot / 365 days cheap & lake | | Illustrative |
 
@@ -71,11 +72,21 @@ With defaults, that gives about **$42,000** (index-at-ingest), **$12,900** (tier
 |---|---|---|---|
 | Queue wait before an alert is picked up (high severity) | 20 min | 5 – 120 min | Illustrative |
 | Queue wait (medium severity, business hours) | 90 min | 15 – 480 min | Illustrative |
-| Queue wait (medium severity, off hours) | 6 h | 1 – 16 h | Illustrative |
+| Off-hours queue wait multiplier | 4× | 1 – 8× | Illustrative |
 | Tier-1 triage time per alert | 10 min | 3 – 30 min | Illustrative |
-| Tier-2 investigation time per case | 90 min | 30 – 480 min | Illustrative |
-| Probability Tier-1 checks the cold tier unprompted | 30% | 0 – 100% | Illustrative — scenario uses a fixed script, slider shows effect |
-| SOAR playbook execution | 2 min | 1 – 10 min | Illustrative |
+| Wait for Tier-2 to pick up an escalation | 20 min | 5 – 120 min | Illustrative |
+| Tier-2 investigation until containment decision, clear-cut alert | 45 min | 15 – 240 min | Illustrative |
+| Tier-2 investigation, ambiguous alert (before asking the user) | 40 min | 15 – 240 min | Illustrative |
+| Waiting for the user to confirm ("was this you?") | 15 min | 0 – 240 min | Illustrative |
+| Time before the analyst decides to search cold data | 30 min | 5 – 240 min | Illustrative |
+| Analyst thinks to search cold data at all | Yes | Yes / No | Illustrative. Surveys of how often this happens don't exist; the toggle shows the effect |
+| Scoping before blocking the domain and purging emails | 15 min | 5 – 120 min | Illustrative |
+| Case write-up | 30 min | 10 – 120 min | Illustrative |
+| SOAR playbook execution (fixed) | 2 min | | Illustrative |
+| Analyst time to launch and verify a playbook (fixed) | 5 min | | Illustrative |
+| Analyst time to discover a duplicate alert is already handled (fixed) | 5 min | | Illustrative |
+
+Business hours are 08:00–18:00.
 
 ## 5. Time model — agentic SOC
 
@@ -83,11 +94,12 @@ With defaults, that gives about **$42,000** (index-at-ingest), **$12,900** (tier
 |---|---|---|---|
 | Agent triage time per alert | 2 min | 0.5 – 5 min | Illustrative |
 | Agent investigation time (hot data only) | 8 min | 3 – 20 min | Illustrative |
-| Human review of agent case summary | 5 min | 2 – 15 min | Illustrative |
+| Human review per approval or report | 5 min | 1 – 15 min | Illustrative |
+| Time for approved actions to execute (fixed) | 2 min | | Illustrative |
 | Human approval wait (business hours) | 10 min | 1 – 60 min | Illustrative |
 | Human approval wait (off hours, on-call) | 30 min | 5 – 120 min | Illustrative |
 | Query budget per investigation | $50 | $0 – $500 | Illustrative |
-| Hunting agent schedule | Daily, 02:00 | Hourly – weekly | Illustrative |
+| Hunting agent schedule | Daily, 02:00 | Any hour | Illustrative |
 
 ## 6. Data-tier latency
 
@@ -118,3 +130,6 @@ Latency is identical for humans and agents. The difference the simulator shows i
 - [ ] Verify the two `To verify` storage/query prices against current public list prices, or relabel as Illustrative.
 - [ ] Find a citable public source for false-positive share and alert volume (e.g. annual SOC surveys); otherwise keep Illustrative.
 - [ ] Decide whether queue wait should be computed from a simple queue model (alerts/day vs analyst throughput) instead of fixed defaults.
+- [ ] §1 organization profile (headcount, alerts/day, false-positive share) isn't used by the engine yet. It becomes relevant for the alert-storm scenario.
+
+All slider parameters are defined in `js/engine/assumptions.js`. Keep that file and this document in sync.

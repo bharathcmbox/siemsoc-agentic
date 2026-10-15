@@ -2,7 +2,9 @@
 
 **Purpose:** The flagship scenario. Shows the difference between the **traditional** and **agentic** operating models on the same incident, with the data architecture held constant (index-at-ingest by default).
 
-**Exec one-liner:** Both SOCs catch it. The traditional SOC contains it in under two hours with about two hours of analyst effort; the agentic SOC contains it in about 20 minutes — before the attacker ever touches the mailbox — with about 10 minutes of human effort.
+**Exec one-liner:** Both SOCs catch it. The traditional SOC contains it in about an hour and a half with nearly two hours of analyst effort; the agentic SOC contains it in about 20 minutes — before the attacker ever touches the mailbox — with about 10 minutes of human effort.
+
+> **Source of truth:** the simulation engine (`js/engine/simulate.js`). The minute-by-minute tables below were the design input; the engine's output differs from them by a few minutes in places. The summary tables show engine output with default assumptions (`node tests/run-all.mjs`).
 
 All names, domains, and IPs are fictional. Domains use the reserved `.example` TLD and IPs use documentation ranges (RFC 5737) on purpose.
 
@@ -46,7 +48,7 @@ Tuesday 2026-03-10, local time (CDT). Each event lists the log source it lands i
 | E4 | 09:40 | Attacker replays the token; reads Dana's mailbox via mail API | Email (mailbox audit) |
 | E5 | 09:47 | Attacker creates inbox rule: messages containing *invoice, payment, remittance* → forward to external address, mark read, move to "RSS Feeds" | Email (mailbox audit) |
 | E6 | 10:05–11:30 | Attacker searches mailbox, finds Brightline Freight invoice thread | Email (mailbox audit) |
-| E7 | 10:10 | Priya clicks the link, abandons at the password page | DNS + proxy |
+| E7 | 10:15 | Priya clicks the link, abandons at the password page | DNS + proxy |
 | E8 | 12:30 | **Objective:** fraudulent bank-change request sent from Dana's mailbox to Marcus | Email |
 | E9 | 13:05 | Sam clicks the link and enters credentials (only if the email is still in his inbox and the domain isn't blocked) | DNS + proxy, IdP |
 
@@ -100,9 +102,9 @@ In scenario 1, R-IT fires at **09:14** (E0 Chicago 08:30 → E3 Amsterdam 09:13)
 | Metric | Traditional | Agentic |
 |---|---|---|
 | MTTD (E1 → first alert) | 19 min | 19 min |
-| MTTR (first alert → contained) | 1 h 43 min | 22 min |
-| Attacker mailbox access | 1 h 17 min | none |
-| Analyst hands-on minutes | 138 | 10 |
+| MTTR (first alert → contained) | 1 h 37 min | 22 min |
+| Attacker mailbox access | 1 h 11 min | none |
+| Analyst hands-on minutes | 110 | 10 |
 | Fraud request sent | No | No |
 | Additional victims | 0 | 0 |
 
