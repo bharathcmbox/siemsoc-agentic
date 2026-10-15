@@ -9,6 +9,10 @@ A personal study project: an **Agentic SOC simulator** that shows executives and
 All five planned phases are built and live at **https://bharathcmbox.github.io/siemsoc-agentic/** (GitHub Pages, deployed from `main`, root folder).
 
 - **Executive view (default):** six stories → race view (two teams on one clock) → plain-language caption, scoreboard, verdict.
+- **Deeper views on every story:**
+  - **Where they appear:** cards under the race, plus caption links at the moments they explain.
+  - **Inside the agent:** the AI team's steps as one agent or a team of specialists.
+  - **Inside the pipeline:** one log line through parse, normalize, enrich, reduce and route.
 - **Analyst view (behind a switch):** side-by-side configuration, timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
 
 ## Layout
@@ -22,13 +26,13 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 - `js/engine/cost.js`: routing, budget cap, and monthly cost
 - `js/engine/assumptions.js`: every slider parameter, mirrored in `docs/assumptions.md`
 - `js/ui/`:
-  - `exec.js`: home, race view, scoreboard, verdict, glossary
-  - `narrator.js`: comparative "beats" built from both results
+  - `exec.js`: home, race view, explore cards, caption links, scoreboard, verdict, glossary
+  - `narrator.js`: comparative "beats" built from both results. A beat can carry `links` (`{ kind: 'agent' | 'pipeline', side, label }`), which the race view shows as caption links
   - `agent-view.js`: "Inside the agent", showing one agent or a team of specialists
   - `panel.js`, `diagram.js`, `pipeline.js`, `summary.js`, `params.js`, `routing-info.js`: analyst view pieces
 - `scenarios/*.json`: scenario data
-  - **Always present:** attacker events, detection rules (each with a `plain` name), `labels` (all scenario-specific wording), and variants
-  - **Optional:** `paramOverrides`, `defaultPreset`, `pipelineDemo`, `noise` (an alert storm), `hunt` (the scheduled sweep), and per-rule `autoContain`
+  - **Always present:** attacker events, detection rules (each with a `plain` name), `labels` (all scenario-specific wording), variants, and `pipelineDemo` (the event "Inside the pipeline" walks through)
+  - **Optional:** `paramOverrides`, `defaultPreset`, `noise` (an alert storm), `hunt` (the scheduled sweep), and per-rule `autoContain`
 - `scenarios/index.json`: the scenario list for the analyst view's dropdown
 - `vendor/fonts/`: the Figtree woff2 font and its SIL Open Font License
 - `docs/`:
@@ -46,15 +50,16 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 - Before committing an engine change, save `node tests/run-all.mjs` output from before and after, and diff it. Results for untouched scenarios must not change.
 - Check UI changes in a browser at desktop and phone width (about 390px), in dark and light, with no console errors and no sideways scrolling.
 - If engine output changes, update the results tables in `docs/scenarios/*.md` to match.
+- In scripted multi-file edits, build each file's new text in full before opening it for writing, and check `git diff --stat` afterwards. A script that fails after opening a file empties it.
 - `gh pr edit` fails on this repo (a GitHub "Projects (classic)" deprecation error). Change a PR's base with `gh api -X PATCH repos/bharathcmbox/siemsoc-agentic/pulls/<n> -f base=main`.
 
 ## Adding a scenario
 
-1. Write `scenarios/<id>.json`, including the full `labels` set (copy the keys from an existing scenario) and a `plain` name for every rule.
+1. Write `scenarios/<id>.json`, including the full `labels` set (copy the keys from an existing scenario), a `plain` name for every rule, and a `pipelineDemo` for the attacker's key event.
 2. Add it to `scenarios/index.json`.
 3. Add a story to `js/stories.js` with team names.
 4. Write `docs/scenarios/<id>.md` with engine-output results.
-5. Link it in the README.
+5. Update the README in two places: the story's direct link (`#story=<storyId>`) under "Stories", and the write-up under "Scenario write-ups".
 
 ## Constraints
 
