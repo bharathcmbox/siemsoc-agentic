@@ -19,9 +19,9 @@
     "objectiveImpact": "A fraudulent \"Brightline Freight changed bank details\" request went from Dana's mailbox to the AP manager. Finance now has to catch it by hand before Friday's payment run.",
     "undetected": "No alert fired at any point. The fraud will most likely be noticed by finance days later, if at all.",
     "mitre": "T1566.002 phishing link, T1557 adversary-in-the-middle, T1550.004 web session cookie, T1114.003 email forwarding rule",
-    "accessCut": "Dana's sessions were revoked",
-    "lureGone": "the phishing email was purged from all inboxes",
-    "indicatorBlocked": "halvorsen-login.example was blocked",
+    "accessCut": "Dana's account was locked down",
+    "lureGone": "the phishing email was removed from every inbox",
+    "indicatorBlocked": "the fake login site was blocked",
     "containDone": "Dana's sessions revoked, password reset, any attacker inbox rules removed",
     "blockTitle": "Phishing domain blocked, emails purged",
     "blockDone": "halvorsen-login.example blocked at DNS/proxy; the lure removed from all 12 inboxes",
@@ -308,7 +308,8 @@
       "confidence": "clear",
       "triageNote": "The IP belongs to a hosting provider in Amsterdam, not the corporate VPN.",
       "agentTriageNote": "Hosting-provider IP, never-seen device, MFA approved from an unusual location: likely session theft. Investigating.",
-      "suppressed": "The attacker relayed through a residential IP near Chicago, so there was no impossible travel to detect."
+      "suppressed": "The attacker connected through a home internet address near Chicago, so there was no impossible travel to spot.",
+      "plain": "the impossible-travel check"
     },
     {
       "id": "R-NRD",
@@ -322,7 +323,8 @@
       "confidence": "clear",
       "rootCause": true,
       "triageNote": "The alert already names the phishing domain. Classic adversary-in-the-middle pattern.",
-      "agentTriageNote": "A 3-day-old domain, then a sign-in from a new device a minute later: adversary-in-the-middle phishing. Investigating."
+      "agentTriageNote": "A 3-day-old domain, then a sign-in from a new device a minute later: adversary-in-the-middle phishing. Investigating.",
+      "plain": "the check for visits to brand-new websites"
     },
     {
       "id": "R-FWD",
@@ -334,7 +336,8 @@
       "severity": "medium",
       "confidence": "ambiguous",
       "triageNote": "An accounts-payable user forwarding payment emails outside the company. Worth a closer look.",
-      "agentTriageNote": "External forwarding of finance keywords, on an accounts-payable user, 35 minutes after a sign-in from a never-seen device. High risk despite the medium severity. Investigating."
+      "agentTriageNote": "External forwarding of finance keywords, on an accounts-payable user, 35 minutes after a sign-in from a never-seen device. High risk despite the medium severity. Investigating.",
+      "plain": "the check for mail forwarded outside the company"
     }
   ],
   "hunt": {
@@ -351,7 +354,8 @@
       "confidence": "clear",
       "rootCause": true,
       "agentTriageNote": "Dana visited a 3-day-old domain and signed in from a new device a minute later. The session was used for hours afterward.",
-      "triageNote": "Last night's sweep found it: Dana visited a 3-day-old domain and signed in from a new device a minute later."
+      "triageNote": "Last night's sweep found it: Dana visited a 3-day-old domain and signed in from a new device a minute later.",
+      "plain": "the nightly search for visits to brand-new websites"
     }
   },
   "variants": [

@@ -4,7 +4,9 @@ A personal study project covering SIEM (Security Information and Event Managemen
 
 ## Agentic SOC simulator
 
-An interactive, vendor-neutral simulator that runs the same attack through two security operations setups side by side. On each side, you choose:
+An interactive, vendor-neutral simulator for executives and business leaders. Pick a story, then watch today's security team and an AI-assisted team handle the same attack on one clock, with a plain-language caption, a scoreboard, and a verdict.
+
+The **Analyst view** switch opens the detailed comparison, where you set each side yourself:
 
 - **Data architecture:** index-at-ingest, tiered, or federated / data lake
 - **Operating model:** traditional (human analysts + SOAR playbooks) or agentic (AI agents + human approval)

@@ -26,14 +26,14 @@ export function createPanel(root, name, { onConfig, onInfo, onPipeline }) {
 
   const arch = segmented(ARCH_LABELS, v => onConfig({ ...config, arch: v }), `Side ${name} data architecture`);
   const model = segmented(MODEL_LABELS, v => onConfig({ ...config, model: v }), `Side ${name} operating model`);
-  const routingInput = h('input', { type: 'checkbox', role: 'switch', 'aria-label': 'Detection-aware routing', onchange: e => onConfig({ ...config, routing: e.target.checked }) });
+  const routingInput = h('input', { type: 'checkbox', role: 'switch', 'aria-label': 'Smart routing', onchange: e => onConfig({ ...config, routing: e.target.checked }) });
   const routingNote = h('small');
   const routingBox = h('div', { class: 'routing' },
     h('label', { class: 'switch' }, routingInput, h('span')),
     h('div', { class: 'txt' },
-      h('strong', {}, 'Detection-aware routing'),
+      h('strong', {}, 'Smart routing'),
       'Promote suspicious events from cheap storage to real-time detection. ', routingNote),
-    h('button', { type: 'button', class: 'info-btn', 'aria-label': 'What is detection-aware routing?', title: 'What is this?', onclick: () => onInfo() }, 'i'),
+    h('button', { type: 'button', class: 'info-btn', 'aria-label': 'What is smart routing?', title: 'What is this?', onclick: () => onInfo() }, 'i'),
   );
 
   const title = h('h3');
@@ -96,6 +96,7 @@ export function createPanel(root, name, { onConfig, onInfo, onPipeline }) {
   }
 
   return {
+    setTitle(t) { title.textContent = t; },
     setConfig(cfg) {
       config = cfg;
       arch.set(cfg.arch);
@@ -105,7 +106,6 @@ export function createPanel(root, name, { onConfig, onInfo, onPipeline }) {
       routingInput.disabled = disabled;
       routingBox.classList.toggle('disabled', disabled);
       routingNote.textContent = disabled ? 'Not needed here: with index-at-ingest, everything is already in the hot tier.' : '';
-      title.textContent = `Side ${name}`;
       tag.textContent = `${ARCH_LABELS[cfg.arch]} · ${MODEL_LABELS[cfg.model]}${cfg.routing && !disabled ? ' · routing on' : ''}`;
     },
 
