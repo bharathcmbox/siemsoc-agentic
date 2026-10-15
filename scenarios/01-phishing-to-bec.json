@@ -1,0 +1,313 @@
+{
+  "id": "01-phishing-to-bec",
+  "date": "2026-03-10",
+  "start": "08:25",
+  "end": "15:00",
+  "firstMaliciousEvent": "E1",
+  "rootCauseEvent": "E2",
+  "title": "Phishing to business email compromise",
+  "short": "1 · Phishing to BEC",
+  "oneLiner": "An accounts-payable specialist falls for a fake login page. The attacker wants to use her mailbox to redirect a vendor payment.",
+  "teaching": "Both SOCs see the same alerts at the same moment. Everything the agentic SOC gains is on the response side.",
+  "labels": {
+    "victim": "Dana",
+    "victimFull": "Dana Reyes",
+    "domain": "halvorsen-login.example",
+    "recipients": 12,
+    "rootCause": "Dana visited halvorsen-login.example (registered 3 days earlier) one minute before the suspicious sign-in",
+    "attackSummary": "adversary-in-the-middle phishing; Dana's session token was stolen and replayed from 203.0.113.45 (Amsterdam, NL)",
+    "hotEvidence": "a sign-in from a never-seen device, followed by mailbox access through the mail API",
+    "ambiguousNote": "The sign-in came from an in-state residential IP with MFA approved. That looks legitimate, so the analyst works through mailbox audit logs and other hot data.",
+    "objectiveImpact": "A fraudulent \"Brightline Freight changed bank details\" request went from Dana's mailbox to the AP manager. Finance now has to catch it by hand before Friday's payment run.",
+    "undetected": "No alert fired at any point. The fraud will most likely be noticed by finance days later, if at all.",
+    "mitre": "T1566.002 phishing link, T1557 adversary-in-the-middle, T1550.004 web session cookie, T1114.003 email forwarding rule"
+  },
+  "events": [
+    {
+      "id": "E0",
+      "time": "08:30",
+      "actor": "user",
+      "benign": true,
+      "source": "idp",
+      "title": "Dana signs in from the Chicago office",
+      "summary": "A normal start to the day.",
+      "raw": {
+        "class_name": "Authentication",
+        "time": "2026-03-10T13:30:04Z",
+        "status": "Success",
+        "user": {
+          "name": "dana.reyes@halvorsen.example"
+        },
+        "src_endpoint": {
+          "ip": "192.0.2.10",
+          "location": {
+            "city": "Chicago",
+            "country": "US"
+          },
+          "autonomous_system": {
+            "name": "Halvorsen Corp",
+            "type": "corporate"
+          }
+        },
+        "device": {
+          "is_known": true
+        }
+      }
+    },
+    {
+      "id": "E1",
+      "time": "08:55",
+      "actor": "attacker",
+      "source": "email",
+      "title": "Phishing email reaches 12 finance staff",
+      "summary": "\"Action required: vendor portal password expires today.\" The email gateway lets it through because the domain is too new to be on any blocklist.",
+      "raw": {
+        "class_name": "Email Activity",
+        "time": "2026-03-10T13:55:02Z",
+        "activity_name": "Receive",
+        "email": {
+          "from": "it-support@halvorsen-login.example",
+          "to": [
+            "dana.reyes@halvorsen.example",
+            "…11 more"
+          ],
+          "subject": "Action required: vendor portal password expires today",
+          "urls": [
+            "https://halvorsen-login.example/portal/reset"
+          ]
+        },
+        "disposition": "Delivered",
+        "verdict": "clean"
+      }
+    },
+    {
+      "id": "E2",
+      "time": "09:12",
+      "actor": "user",
+      "source": "dns",
+      "promotable": true,
+      "clicker": "Dana Reyes",
+      "title": "Dana clicks the link",
+      "summary": "Her laptop looks up and opens halvorsen-login.example, a domain registered 3 days ago.",
+      "raw": {
+        "class_name": "DNS Activity",
+        "time": "2026-03-10T14:12:41Z",
+        "src_endpoint": {
+          "hostname": "HLV-FIN-LT042",
+          "ip": "10.20.14.42"
+        },
+        "query": {
+          "hostname": "halvorsen-login.example",
+          "type": "A"
+        },
+        "answers": [
+          {
+            "rdata": "198.51.100.23"
+          }
+        ],
+        "enrichment": {
+          "domain_age_days": 3
+        }
+      }
+    },
+    {
+      "id": "E3",
+      "time": "09:13",
+      "actor": "attacker",
+      "source": "idp",
+      "compromises": "Dana Reyes",
+      "title": "Attacker steals Dana's session",
+      "summary": "Dana enters her password and approves the MFA push on the fake page. The page relays both to the real sign-in, and the attacker keeps the session token. The identity provider sees the sign-in from 203.0.113.45 (Amsterdam, NL).",
+      "raw": {
+        "class_name": "Authentication",
+        "time": "2026-03-10T14:13:18Z",
+        "activity_name": "Logon",
+        "status": "Success",
+        "user": {
+          "name": "dana.reyes@halvorsen.example"
+        },
+        "src_endpoint": {
+          "ip": "203.0.113.45",
+          "location": {
+            "city": "Amsterdam",
+            "country": "NL"
+          },
+          "autonomous_system": {
+            "name": "Example Hosting B.V.",
+            "type": "hosting"
+          }
+        },
+        "mfa": {
+          "factor": "push",
+          "result": "approved"
+        },
+        "device": {
+          "is_known": false
+        }
+      }
+    },
+    {
+      "id": "E4",
+      "time": "09:40",
+      "actor": "attacker",
+      "source": "email",
+      "requires": [
+        "attackerAccess"
+      ],
+      "mailboxAccess": true,
+      "title": "Attacker starts reading Dana's mailbox",
+      "summary": "Replays the stolen token and reads mail through the mail API."
+    },
+    {
+      "id": "E5",
+      "time": "09:47",
+      "actor": "attacker",
+      "source": "email",
+      "requires": [
+        "attackerAccess"
+      ],
+      "title": "Attacker hides a forwarding rule",
+      "summary": "Mail containing \"invoice\", \"payment\", or \"remittance\" is forwarded to an outside address, marked read, and moved to a folder Dana never opens.",
+      "raw": {
+        "class_name": "Email Activity",
+        "time": "2026-03-10T14:47:09Z",
+        "activity_name": "Mailbox Rule Created",
+        "actor": {
+          "user": "dana.reyes@halvorsen.example",
+          "src_ip": "203.0.113.45",
+          "app": "mail-api"
+        },
+        "rule": {
+          "conditions": {
+            "body_or_subject_contains": [
+              "invoice",
+              "payment",
+              "remittance"
+            ]
+          },
+          "actions": [
+            "forward:ap.records.archive@mailbox.example",
+            "mark_read",
+            "move:RSS Feeds"
+          ]
+        }
+      }
+    },
+    {
+      "id": "E7",
+      "time": "10:15",
+      "actor": "user",
+      "source": "dns",
+      "promotable": true,
+      "requires": [
+        "lureReachable"
+      ],
+      "clicker": "Priya Natarajan",
+      "title": "Priya clicks the same link",
+      "summary": "Priya gets suspicious at the password page and closes it. No credentials lost."
+    },
+    {
+      "id": "E6",
+      "time": "10:30",
+      "actor": "attacker",
+      "source": "email",
+      "requires": [
+        "attackerAccess"
+      ],
+      "title": "Attacker finds a vendor invoice thread",
+      "summary": "Searches the mailbox and finds Brightline Freight's invoices ahead of Friday's payment run."
+    },
+    {
+      "id": "E8",
+      "time": "12:30",
+      "actor": "attacker",
+      "source": "email",
+      "requires": [
+        "attackerAccess"
+      ],
+      "objective": true,
+      "title": "Fraudulent bank-change request sent",
+      "summary": "From Dana's real mailbox to her manager: \"Brightline Freight has new bank details, please update before Friday.\"",
+      "raw": {
+        "class_name": "Email Activity",
+        "time": "2026-03-10T17:30:12Z",
+        "activity_name": "Send",
+        "actor": {
+          "user": "dana.reyes@halvorsen.example",
+          "src_ip": "203.0.113.45",
+          "app": "mail-api"
+        },
+        "email": {
+          "to": [
+            "marcus.lee@halvorsen.example"
+          ],
+          "subject": "RE: Brightline Freight — updated remittance details",
+          "attachments": [
+            "Brightline_bank_letter.pdf"
+          ]
+        }
+      }
+    },
+    {
+      "id": "E9",
+      "time": "13:05",
+      "actor": "user",
+      "source": "dns",
+      "promotable": true,
+      "requires": [
+        "lureReachable"
+      ],
+      "clicker": "Sam Okafor",
+      "compromises": "Sam Okafor",
+      "title": "Sam opens the email after lunch and signs in",
+      "summary": "The link still works, so Sam's session is stolen too."
+    }
+  ],
+  "rules": [
+    {
+      "id": "R-IT",
+      "name": "Impossible travel",
+      "logic": "Two sign-ins for the same user that would need travel faster than 900 km/h.",
+      "needs": [
+        "E0",
+        "E3"
+      ],
+      "severity": "high",
+      "confidence": "clear",
+      "triageNote": "The IP belongs to a hosting provider in Amsterdam, not the corporate VPN.",
+      "agentTriageNote": "Hosting-provider IP, never-seen device, MFA approved from an unusual location: likely session theft. Investigating."
+    },
+    {
+      "id": "R-NRD",
+      "name": "Newly registered domain, then a sign-in",
+      "logic": "A visit to a domain under 7 days old, followed by a sign-in by the same user within 5 minutes.",
+      "needs": [
+        "E2",
+        "E3"
+      ],
+      "severity": "high",
+      "confidence": "clear",
+      "rootCause": true,
+      "triageNote": "The alert already names the phishing domain. Classic adversary-in-the-middle pattern.",
+      "agentTriageNote": "A 3-day-old domain, then a sign-in from a new device a minute later: adversary-in-the-middle phishing. Investigating."
+    },
+    {
+      "id": "R-FWD",
+      "name": "External forwarding rule created",
+      "logic": "A new inbox rule that forwards mail to an outside address.",
+      "needs": [
+        "E5"
+      ],
+      "severity": "medium",
+      "confidence": "ambiguous",
+      "triageNote": "An accounts-payable user forwarding payment emails outside the company. Worth a closer look.",
+      "agentTriageNote": "External forwarding of finance keywords, on an accounts-payable user, 35 minutes after a sign-in from a never-seen device. High risk despite the medium severity. Investigating."
+    }
+  ],
+  "variants": [
+    {
+      "id": "default",
+      "label": "As scripted"
+    }
+  ]
+}
