@@ -14,6 +14,7 @@ const ICONS = {
   block: svg('<circle cx="12" cy="12" r="9"/><path d="m6 6 12 12"/>'),
 };
 const ic = name => h('span', { class: 'r-ic', html: ICONS[name] });
+export const riskIcon = name => h('span', { class: 'r-ic', html: ICONS[name] });
 
 // ---------------- content ----------------
 
@@ -179,13 +180,17 @@ export function renderRiskBand({ onOpen }) {
 
 // ---------------- Risks screen ----------------
 
-export function renderRisks(root, { topic, onBack, onOpen }) {
-  if (topic === 'injection') return renderInjection(root, { onBack: () => onOpen(null), onHome: onBack });
+// from: { back } when the reader came from a story; adds a way back to it.
+const backToStory = from => (from ? h('button', { class: 'back', type: 'button', onclick: from.back }, '← Back to the story') : null);
+
+export function renderRisks(root, { topic, onBack, onOpen, from }) {
+  if (topic === 'injection') return renderInjection(root, { onBack: () => onOpen(null), onHome: onBack, from });
   const onDeep = () => onOpen('injection');
   const jump = id => document.getElementById(`r-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   root.replaceChildren(h('div', { class: 'r-page' },
-    h('button', { class: 'back', type: 'button', onclick: onBack }, '← All stories'),
+    from ? h('div', { class: 'r-backs' }, backToStory(from), h('button', { class: 'back', type: 'button', onclick: onBack }, 'All stories'))
+      : h('button', { class: 'back', type: 'button', onclick: onBack }, '← All stories'),
     h('header', { class: 'r-head' },
       h('span', { class: 'eyebrow' }, 'Before you trust an AI agent'),
       h('h1', {}, 'What AI agents can get wrong, and the guardrails that catch it'),
@@ -287,11 +292,12 @@ function step(i, body) {
 // The planted browser identifier, with the attacker's text highlighted.
 const plantedUA = () => h('code', { class: 'd-ua' }, 'Mozilla/5.0 (', h('mark', {}, PLANTED), ')');
 
-function renderInjection(root, { onBack, onHome }) {
+function renderInjection(root, { onBack, onHome, from }) {
   const jump = id => document.getElementById(`d-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   root.replaceChildren(h('div', { class: 'r-page' },
     h('div', { class: 'r-backs' },
-      h('button', { class: 'back', type: 'button', onclick: onBack }, '← What AI agents can get wrong'),
+      backToStory(from),
+      h('button', { class: 'back', type: 'button', onclick: onBack }, `${from ? '' : '← '}What AI agents can get wrong`),
       h('button', { class: 'back', type: 'button', onclick: onHome }, 'All stories')),
     h('header', { class: 'r-head' },
       h('span', { class: 'eyebrow' }, 'Deep dive · Manipulation'),

@@ -31,6 +31,8 @@ A neutral guide to the risks of AI agents in a security team, and the guardrails
 - [What AI agents can get wrong](https://bharathcmbox.github.io/siemsoc-agentic/#risks)
 - [When the logs talk back](https://bharathcmbox.github.io/siemsoc-agentic/#risks/injection): how attackers can trick an AI agent through the logs it reads, and what stops it
 
+Each story's verdict also lists what could go wrong with the AI-assisted team in that story, with the guardrail for each, and the race offers amber links at the moments where those risks apply.
+
 ### Analyst view
 
 The **Analyst view** switch opens the detailed comparison, where you set each side yourself:
