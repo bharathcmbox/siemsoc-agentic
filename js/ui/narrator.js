@@ -20,7 +20,7 @@ export function clock12(t) {
 // Engine text uses 24-hour "09:36" or "+1d 02:43"; convert for readers.
 const to12 = s => s.replace(/(\+(\d+)d )?\b(\d{2}):(\d{2})\b(?! ?[ap]m)/g, (_, d, n, hh, mm) => clock12(Number(n || 0) * 1440 + Number(hh) * 60 + Number(mm)));
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-const poss = n => `${n}'s`;
+const poss = n => (n.endsWith('s') ? `${n}'` : `${n}'s`);
 const plainSources = ids => ids.map(id => SOURCES.find(s => s.id === id)?.plain ?? id).join(' and ');
 
 function statusAt(R, t) {
@@ -38,6 +38,7 @@ function statusAt(R, t) {
       return q ? `the alert is waiting behind about ${q.queueSize} storm alerts` : `the alert has been waiting for an analyst since ${clock12(m.firstAlertAt)}`;
     }
     case 'triage': return agentic ? 'the AI agent is investigating' : 'an analyst is looking at the alert';
+    case 'closed-wrongly': return 'the case was closed as harmless by mistake';
     case 'escalated': return 'handed to a senior analyst, waiting to be picked up';
     case 'investigating': return 'a senior analyst is investigating by hand, one system at a time';
     case 'waiting-user': return 'the analyst is waiting for someone to confirm what happened';
@@ -144,6 +145,20 @@ export function buildBeats(A, B, names = ['Side A', 'Side B'], risks = []) {
         ? `${N[i]}: an analyst finally opens the case, but only because ${e.rulePlain} fired and jumped the queue. The original alert is still waiting.`
         : `${N[i]}: an analyst opens the alert after ${fmtDuration(wait)} waiting in the queue.`;
     add(e.t, `${text} ${N[1 - i]}: ${statusAt(other(i), e.t)}.`, r.config.model === 'agentic' ? { kind: 'agent', side: i, label: 'See how the agent works' } : undefined);
+  });
+
+  // 4b. Text the attacker planted for the agent: believed, or caught.
+  R.forEach((r, i) => {
+    const fooled = r.timeline.find(e => e.injected);
+    const caught = r.timeline.find(e => e.injectionCaught);
+    if (fooled) {
+      sideTag('injection', r);
+      add(fooled.t, `${poss(N[i])} AI agent reads the note the attacker planted for it and believes it. It closes the case as an approved IT change, and nothing checks the claim. ${N[1 - i]}: ${statusAt(other(i), fooled.t)}.`);
+    }
+    if (caught) {
+      sideTag('injection', r);
+      add(caught.t, `For ${N[i]}, the guardrails treat the planted note as evidence, not an instruction. The IT ticket it cites doesn't exist, so a person reviews the case before anything is closed.`);
+    }
   });
 
   // 5. Decision to stop the attacker.

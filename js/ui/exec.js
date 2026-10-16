@@ -1,6 +1,6 @@
 // Executive view: story picker and the race view (two lanes on one clock,
 // a narrated caption, a scoreboard, and the verdict).
-import { renderRiskBand, GROUPS, riskIcon } from './risks.js';
+import { renderRiskBand, GROUPS, CLOSING, riskIcon } from './risks.js';
 import { h, usd } from './dom.js';
 import { STORIES } from '../stories.js';
 import { clock12 } from './narrator.js';
@@ -334,8 +334,10 @@ function renderVerdict(root, A, B, names, L, { onAgentView, onRisks, risks = [] 
   if (a.objectiveReached !== b.objectiveReached) out.push(`Only against ${a.objectiveReached ? nA : nB} did the attacker succeed (${L.objectiveStatus}).`);
   else out.push(a.objectiveReached ? `Against both teams, the attacker succeeded (${L.objectiveStatus}).` : 'Neither team let the attacker reach their goal.');
   if (a.uncontained.length !== b.uncontained.length) {
-    const [w, wn] = a.uncontained.length > b.uncontained.length ? [a, nA] : [b, nB];
-    out.push(`${cap(wn)} never found ${list(w.uncontained)}, so the attacker still has a way back in.`);
+    const [w, wn, wr] = a.uncontained.length > b.uncontained.length ? [a, nA, A] : [b, nB, B];
+    out.push(wr.timeline.some(e => e.injected)
+      ? `${cap(wn)} closed the case as harmless, so ${list(w.uncontained)} stayed compromised.`
+      : `${cap(wn)} never found ${list(w.uncontained)}, so the attacker still has a way back in.`);
   }
   out.push(`Analyst time: ${fmtMins(a.analystMin)} vs ${fmtMins(b.analystMin)}. Data cost: ${usd(a.cost.total)} vs ${usd(b.cost.total)} a month.`);
 
@@ -364,16 +366,19 @@ const riskTopic = group => (group === 'manipulation' ? 'injection' : group);
 // "What could go wrong here": the story's own risks (from the scenario file),
 // each with its guardrail and a link to its group on the Risks screen.
 function storyRisks(risks, onRisks) {
-  const group = id => GROUPS.find(g => g.id === id);
+  const group = id => [...GROUPS, ...CLOSING].find(g => g.id === id);
+  const played = risks.some(r => r.played);
   return h('section', { class: 'v-risks', 'aria-label': 'What could go wrong here' },
     h('div', { class: 'v-risks-head' },
       h('h3', {}, 'What could go wrong here'),
-      h('p', {}, 'None of this happens in the race above. These are ways an AI-assisted team could fail in this story, and the guardrail that catches each.')),
+      h('p', {}, played
+        ? 'The risks marked "In this race" are the ones you just watched. Each comes with the guardrail that catches it.'
+        : 'None of this happens in the race above. These are ways an AI-assisted team could fail in this story, and the guardrail that catches each.')),
     h('div', { class: 'v-risk-grid' }, risks.map(r => {
       const g = group(r.group);
       const deep = r.group === 'manipulation';
       return h('article', { class: 'v-risk' },
-        h('span', { class: 'v-risk-tag' }, riskIcon(g.icon), `${g.n} · ${g.title}`),
+        h('span', { class: 'v-risk-tag' }, riskIcon(g.icon), g.n ? `${g.n} · ${g.title}` : g.title, r.played ? h('em', {}, 'In this race') : null),
         h('b', {}, r.title),
         h('p', {}, r.text),
         h('p', { class: 'v-guard' }, h('span', {}, 'Guardrail'), r.guard),

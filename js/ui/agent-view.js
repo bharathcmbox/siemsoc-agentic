@@ -25,6 +25,7 @@ function classify(e) {
   const t = e.title;
   // untrusted: the step reads logs, emails or files that the attacker may
   // have written. That text is data, never instructions (docs/ai-risks.md).
+  if (/closes the case/i.test(t)) return { role: 'triage', touch: 'Decision: closed as harmless, with no review' };
   if (/triages|links|storm/i.test(t)) return { role: 'triage', touch: 'Read: alert and recent activity', untrusted: true };
   if (/asks for approval/i.test(t)) return { role: 'response', touch: 'Proposal; no action yet' };
   if (/report/i.test(t)) return { role: 'reporting', touch: 'Write: case report' };

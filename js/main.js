@@ -45,11 +45,12 @@ let race = null;
 // Executive links: #story=phishing&cmp=team. Anything else, or the analyst
 // view: #s=<scenario>&v=<variant>&a=<side>&b=<side>[&view=analyst].
 // The risks screens: #risks, #risks/<group id>, #risks/injection.
-const encodeSide = c => `${c.arch}-${c.model}-${c.routing ? 1 : 0}`;
+// A fourth part, -0, means the agent's guardrails are off.
+const encodeSide = c => `${c.arch}-${c.model}-${c.routing ? 1 : 0}${c.guard === false ? '-0' : ''}`;
 function decodeSide(s) {
-  const [arch, model, r] = (s ?? '').split('-');
+  const [arch, model, r, g] = (s ?? '').split('-');
   if (!ARCH_LABELS[arch] || !['traditional', 'agentic'].includes(model)) return null;
-  return cfg(arch, model, r === '1');
+  return { ...cfg(arch, model, r === '1'), ...(g === '0' ? { guard: false } : {}) };
 }
 function writeHash() {
   if (state.screen === 'home') { history.replaceState(null, '', location.pathname); return; }
@@ -122,7 +123,10 @@ function runAll() {
   const scrub = $('scrub');
   scrub.min = state.start; scrub.max = state.end; scrub.step = 1;
   state.clock = Math.min(Math.max(state.clock, state.start), state.end);
+  const v = scn.variants.find(x => x.id === state.variant);
+  const planted = scn.events.some(e => e.injection) || Object.values(v?.eventOverrides ?? {}).some(e => e.injection);
   panels.forEach((p, i) => {
+    p.setPlanted(planted);
     p.setConfig(state.sides[i]);
     p.setTitle(`Side ${i ? 'B' : 'A'}: ${state.names[i].title}`);
     p.setResult(state.results[i], state.extras[i], state.params);
@@ -310,7 +314,7 @@ async function openStory(storyId, cmpId) {
   const cmp = story.comparisons.find(c => c.id === cmpId) ?? story.comparisons[0];
   state.screen = 'story';
   showScreen();
-  await selectScenario(story.scenario, { variant: story.variant, sides: [{ ...cmp.a }, { ...cmp.b }] });
+  await selectScenario(story.scenario, { variant: cmp.variant ?? story.variant, sides: [{ ...cmp.a }, { ...cmp.b }] });
   window.scrollTo(0, 0);
 }
 
@@ -344,7 +348,7 @@ function openRisks(topic = null, from) {
   state.screen = 'risks';
   state.riskTopic = topic;
   race = null;
-  renderRisks($('risks'), { topic, onBack: goHome, onOpen: t => openRisks(t), from: state.riskFrom });
+  renderRisks($('risks'), { topic, onBack: goHome, onOpen: t => openRisks(t), from: state.riskFrom, onWatch: () => openStory('phishing', 'attack-agent') });
   showScreen();
   writeHash();
   const target = topic && topic !== 'injection' && document.getElementById(`r-${topic}`);

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A personal study project: an **Agentic SOC simulator** that shows executives and business leaders how an AI-assisted security team differs from today's, and how ingestion pipelines, SIEM, and SOAR fit together. `docs/PLAN.md` is the source of truth for scope and phases.
 
-All five planned phases are built and live at **https://bharathcmbox.github.io/siemsoc-agentic/** (GitHub Pages, deployed from `main`, root folder).
+All six planned phases are built and live at **https://bharathcmbox.github.io/siemsoc-agentic/** (GitHub Pages, deployed from `main`, root folder).
 
 - **Executive view (default):** six stories → race view → plain-language caption, scoreboard, verdict.
   - **Race view, top to bottom:** the story's question and intro; "ways to watch this story" cards when it has more than one comparison; the race box (play controls, the two lanes on one clock with an amber "Attack begins" flag, legend, caption).
@@ -15,7 +15,7 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
   - **Inside the agent:** the AI team's steps as one agent or a team of specialists.
   - **Inside the pipeline:** one log line through parse, normalize, enrich, reduce and route.
 - **What AI agents can get wrong:** a "Before you trust an AI agent" band on the home screen, a Risks screen (`#risks`, or `#risks/<group>` to jump to a group), and the prompt-injection deep dive (`#risks/injection`). Each story's verdict has a "What could go wrong here" section, the race has amber caption links to it, and "Inside the agent" marks steps that read untrusted text. Opened from a story, the risk screens offer "Back to the story". All wording comes from `docs/ai-risks.md`.
-- **Analyst view (behind a switch):** side-by-side configuration, timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
+- **Analyst view (behind a switch):** side-by-side configuration (including an "Agent guardrails" switch, active only when the variant plants text for the agent), timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
 
 ## Layout
 
@@ -23,7 +23,7 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 - `css/theme.css`: palette tokens for both themes (dark default), the bundled font, page basics
 - `css/exec.css`, `css/analyst.css`, `css/risks.css`: styles for each view
 - `js/main.js`: app controller, with shared state, playback, presets, view switch, theme toggle, and the URL hash
-- `js/stories.js`: the six executive stories, their comparisons, and plain-language team names (`title`, `sub`, `ref`). When a story has more than one comparison, each needs a `chapter` (a short question) and a `teaser` (one line); the race view shows them as numbered "ways to watch this story" cards
+- `js/stories.js`: the six executive stories, their comparisons, and plain-language team names (`title`, `sub`, `ref`). A comparison can set its own `variant`, and a side can set `guard: false` (the agent's guardrails off; `-0` at the end of a side in the URL). When a story has more than one comparison, each needs a `chapter` (a short question) and a `teaser` (one line); the race view shows them as numbered "ways to watch this story" cards
 - `js/engine/simulate.js`: discrete-event simulation of one SOC configuration against a scenario
 - `js/engine/cost.js`: routing, budget cap, and monthly cost
 - `js/engine/assumptions.js`: every slider parameter, mirrored in `docs/assumptions.md`
@@ -36,7 +36,8 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 - `scenarios/*.json`: scenario data
   - **Always present:** attacker events, detection rules (each with a `plain` name), `labels` (all scenario-specific wording), variants, and `pipelineDemo` (the event "Inside the pipeline" walks through)
   - **Optional:** `paramOverrides`, `defaultPreset`, `noise` (an alert storm), `hunt` (the scheduled sweep), and per-rule `autoContain`
-  - **AI risks:** `risks`, the verdict's "What could go wrong here" items (`group`, `ref`, `title`, `text`, `guard`, and optionally `at` and `cue` for a caption link). A variant can carry its own `risks`. Keep them in step with the per-story section of `docs/ai-risks.md`
+  - **AI risks:** `risks`, the verdict's "What could go wrong here" items (`group`, `ref`, `title`, `text`, `guard`, and optionally `at` and `cue` for a caption link, and `played` when the race shows it happening). A variant can carry its own `risks`. Keep them in step with `docs/ai-risks.md`
+  - **Variants** can also set `eventOverrides` (per event id), `addRules`, and an event's `injection` (`{ text, ticket }`): text planted for the agent. A rule with `harness: true` is one of the agent's guardrails and only runs for an AI-assisted team with guardrails on
 - `scenarios/index.json`: the scenario list for the analyst view's dropdown
 - `vendor/fonts/`: the Figtree woff2 font and its SIL Open Font License
 - `docs/`:
@@ -45,9 +46,9 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
   - `ai-risks.md`: the source for all wording about AI risks and guardrails, with sources
   - `scenarios/*.md`: one per scenario, with results tables
 - `tests/` (dev only, needs Node):
-  - `node tests/run-all.mjs`: metrics for every scenario × configuration
+  - `node tests/run-all.mjs`: metrics for every scenario × configuration (plus `nogu` rows, guardrails off, for variants with planted text)
   - `node tests/run-all.mjs --timeline <scenarioId> <variant> <arch> <model> <on|off>`: one timeline
-  - `node tests/narrate.mjs <scenarioId> <variant> <arch-model-0|1> <arch-model-0|1>`: the narration for one comparison
+  - `node tests/narrate.mjs <scenarioId> <variant> <arch-model-0|1[-0]> <arch-model-0|1[-0]>`: the narration for one comparison and its caption links (a trailing `-0` turns the guardrails off)
 
 ## Workflow
 
@@ -76,4 +77,4 @@ All five planned phases are built and live at **https://bharathcmbox.github.io/s
 - **Numbers:** every figure shown in the app comes from a parameter in `docs/assumptions.md`, labelled Illustrative unless it's sourced in §9. Keep `js/engine/assumptions.js` and the doc in sync.
 - **Theme:** dark by default with a light option. Every color is a token in `css/theme.css`.
 - **Fictional data:** use `.example` domains and RFC 5737 documentation IP ranges.
-- **Keep the axes separate:** data architecture and operating model are independent settings. Agent design belongs in "Inside the agent", not as a third setting.
+- **Keep the axes separate:** data architecture and operating model are independent settings. Agent design belongs in "Inside the agent", not as a third setting. The guardrails switch (`guard`) is not a general setting either: it only changes anything when a variant plants text for the agent, and the harness is credited only for what it changes, with its cost shown.
