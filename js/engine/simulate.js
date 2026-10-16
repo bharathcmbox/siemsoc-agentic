@@ -44,6 +44,9 @@ function sourceName(id) {
 export function simulate(scenario, variantId, config, params) {
   const { arch, model, routing } = config;
   const routingOn = routing && arch !== 'index';
+  // guard: the guardrails around the AI agent (on unless switched off). They
+  // only change anything when an event carries planted text (`injection`).
+  const guard = config.guard !== false;
   const variant = scenario.variants?.find(v => v.id === variantId) ?? scenario.variants?.[0] ?? {};
   const removed = new Set(variant.removeEvents ?? []);
   const L = { ...scenario.labels, ...variant.labels };
@@ -53,7 +56,12 @@ export function simulate(scenario, variantId, config, params) {
   const end = parseTime(variant.end ?? scenario.end);
   const events = scenario.events
     .filter(e => !removed.has(e.id))
+    .map(e => ({ ...e, ...variant.eventOverrides?.[e.id] }))
     .map(e => ({ ...e, t: parseTime(e.time) }));
+  // A variant can add rules. `harness` rules are part of the agent's
+  // guardrails, so they exist only for an AI-assisted team with guardrails on.
+  const rules = [...scenario.rules, ...(variant.addRules ?? [])]
+    .filter(r => !r.harness || (model === 'agentic' && guard));
   const byId = Object.fromEntries(events.map(e => [e.id, e]));
   const rootEvent = byId[scenario.rootCauseEvent];
 
@@ -176,7 +184,7 @@ export function simulate(scenario, variantId, config, params) {
   // ---- detection -------------------------------------------------------
   const ruleState = {};
   function evaluateRules() {
-    for (const rule of scenario.rules) {
+    for (const rule of rules) {
       if (ruleState[rule.id]) continue;
       if (!rule.needs.every(id => S.happened[id] != null)) continue;
       const ready = Math.max(...rule.needs.map(id => S.happened[id]));
@@ -394,11 +402,12 @@ export function simulate(scenario, variantId, config, params) {
   }
 
   // ---- agentic SOC -----------------------------------------------------
-  function approval(t, actions, title, onApproved) {
-    const wait = isBusiness(t) ? params.approvalWait : params.approvalWaitOff;
-    log(t, 'agent', `Agent asks for approval: ${title}`, `Proposed: ${actions}. Each claim links to the evidence behind it.`, { approval: true, phase: 'awaiting-approval' });
+  // extra: minutes of added review (e.g. a person checking flagged text).
+  function approval(t, actions, title, onApproved, extra = 0) {
+    const wait = (isBusiness(t) ? params.approvalWait : params.approvalWaitOff) + extra;
+    log(t, 'agent', `Agent asks for approval: ${title}`, `Proposed: ${actions}. Each claim links to the evidence behind it.${extra ? ' The planted note goes to the reviewer too.' : ''}`, { approval: true, phase: 'awaiting-approval' });
     const ok = t + wait;
-    addWork(ok, params.reviewMinutes, 'Analyst');
+    addWork(ok, params.reviewMinutes + extra, 'Analyst');
     at(ok, 0, tt => {
       log(tt, 'human', 'Analyst reviews and approves', `Approval took ${fmtDuration(wait)} (${isBusiness(t) ? 'business hours' : 'off hours, on-call'}).`, { who: 'Analyst', phase: 'approved' });
       at(tt + FIXED.agentAction, 0, onApproved);
@@ -425,7 +434,7 @@ export function simulate(scenario, variantId, config, params) {
           if (S.rootCauseAt == null) {
             S.rootCauseAt = t3;
             log(t3, 'agent', 'Cold search returns: root cause found', `${L.rootCause}.`);
-            if (S.agentProposed) agentFollowUp(t3);
+            if (S.agentProposed && S.case.closedWrongly == null) agentFollowUp(t3);
           }
         });
       }
@@ -433,9 +442,25 @@ export function simulate(scenario, variantId, config, params) {
     });
   }
 
+  // Planted text the agent has read by time t: an attacker event whose fields
+  // carry instructions addressed to an AI reviewer.
+  const plantedBy = t => events.find(e => e.injection && S.happened[e.id] != null && S.happened[e.id] <= t);
+
   function agentPropose(t) {
     if (S.rootCauseAt == null && rootCauseIsHot()) S.rootCauseAt = t;
     S.agentProposed = true;
+    const planted = plantedBy(t);
+    if (planted && !guard) {
+      // No guardrails: the agent takes the planted note as an instruction.
+      log(t, 'agent', 'Agent closes the case as an approved IT change', `It read the forwarding rule's name, "${planted.injection.text}", and took it at its word. Nothing checks the claim, and nobody reviews the closure.`, { bad: true, injected: true, phase: 'closed-wrongly' });
+      S.case.closedWrongly = t;
+      return;
+    }
+    let extra = 0;
+    if (planted) {
+      extra = params.injectionReviewMin;
+      log(t, 'agent', 'Agent checks the approval claim', `The forwarding rule's name claims IT approval (ticket ${planted.injection.ticket}). The ticket system has no such change for this mailbox, so the claim fails. The note is treated as evidence of the attack, not as an instruction, and a person reviews it.`, { injectionCaught: true });
+    }
     const full = S.rootCauseAt != null && S.rootCauseAt <= t;
     log(t, 'agent', 'Agent finishes the investigation', full
       ? `Confirmed: ${L.attackSummary}. ${L.rootCause}. ${L.fullFinding}`
@@ -446,12 +471,12 @@ export function simulate(scenario, variantId, config, params) {
         contain(tt, 'agent, approved');
         blockAndPurge(tt, 'agent, approved');
         agentFinishOthers(tt);
-      });
+      }, extra);
     } else {
       approval(t, L.containPackage, 'interim containment', tt => {
         contain(tt, 'agent, approved');
         if (rootDropped()) agentReport(tt);
-      });
+      }, extra);
     }
   }
 
@@ -557,7 +582,7 @@ export function simulate(scenario, variantId, config, params) {
 
   // ---- metrics -------------------------------------------------------------
   const firstMal = parseTime(byId[scenario.firstMaliciousEvent]?.time ?? scenario.start);
-  const realtimeRules = scenario.rules.filter(r => !r.suppressed && r.needs.every(id => byId[id]));
+  const realtimeRules = rules.filter(r => !r.suppressed && r.needs.every(id => byId[id]));
   const covered = realtimeRules.filter(r => r.needs.every(id => realtime(visibility(byId[id]))));
   const accessEnd = S.containedAt ?? end;
   const metrics = {
@@ -581,5 +606,5 @@ export function simulate(scenario, variantId, config, params) {
     caseClosedAt: S.caseClosedAt,
   };
 
-  return { config: { arch, model, routing: routingOn }, plan, labels: L, start, end, timeline, work, spend, metrics };
+  return { config: { arch, model, routing: routingOn, ...(guard ? {} : { guard: false }) }, plan, labels: L, start, end, timeline, work, spend, metrics };
 }

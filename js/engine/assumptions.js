@@ -46,6 +46,7 @@ export const PARAMS = [
   { id: 'approvalWaitOff',  group: 'agent', label: 'Human approval wait, off hours', unit: 'min', min: 5, max: 120, step: 5, value: 30 },
   { id: 'spotCheckShare',   group: 'agent', label: 'Share of auto-closed alerts a person spot-checks', unit: '%', min: 0, max: 50, step: 1, value: 5 },
   { id: 'reviewMinutes',    group: 'agent', label: 'Human review per approval / report', unit: 'min', min: 1, max: 15, step: 1, value: 5 },
+  { id: 'injectionReviewMin', group: 'agent', label: 'Extra review when log text tries to instruct the agent', unit: 'min', min: 0, max: 30, step: 1, value: 5 },
 
   // Detection on cold data (an automated job; available to both operating models)
   { id: 'scheduledSweep',   group: 'sweep', label: 'Nightly scheduled sweep of cold data', unit: 'bool', value: true },

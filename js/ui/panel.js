@@ -109,7 +109,7 @@ export function createPanel(root, name, { onConfig, onInfo, onPipeline, onAgent 
       routingInput.disabled = disabled;
       routingBox.classList.toggle('disabled', disabled);
       routingNote.textContent = disabled ? 'Not needed here: with index-at-ingest, everything is already in the hot tier.' : '';
-      tag.textContent = `${ARCH_LABELS[cfg.arch]} · ${MODEL_LABELS[cfg.model]}${cfg.routing && !disabled ? ' · routing on' : ''}`;
+      tag.textContent = `${ARCH_LABELS[cfg.arch]} · ${MODEL_LABELS[cfg.model]}${cfg.routing && !disabled ? ' · routing on' : ''}${cfg.guard === false ? ' · no guardrails' : ''}`;
     },
 
     setResult(res, extra, params) {

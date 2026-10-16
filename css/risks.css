@@ -39,6 +39,7 @@
 .r-head h1 { font-size: clamp(1.6rem, 3.2vw, 2.2rem); line-height: 1.2; text-wrap: pretty; }
 .r-head p { margin: 0; color: var(--muted); max-width: 72rem; }
 .r-head .r-key { color: var(--ink); }
+.r-head .cap-link { justify-self: start; }
 .r-backs { display: flex; flex-wrap: wrap; gap: 4px 18px; }
 .r-jump { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
 .r-jump button { border: 1px solid var(--line); background: var(--surface); color: var(--muted); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 0.85rem; cursor: pointer; }
@@ -146,6 +147,7 @@
 .v-risk-tag { display: flex; align-items: center; gap: 8px; font-size: 0.74rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
 .v-risk-tag .r-ic { width: 26px; height: 26px; border-radius: 8px; background: var(--surface); }
 .v-risk-tag .r-ic svg { width: 15px; height: 15px; }
+.v-risk-tag em { margin-left: auto; font-style: normal; letter-spacing: 0; text-transform: none; font-size: 0.74rem; color: var(--detect); background: var(--detect-soft); border-radius: 999px; padding: 1px 8px; }
 .v-guard { background: var(--good-soft); border-radius: 8px; padding: 8px 10px; }
 .v-guard span { display: block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--good-ink); margin-bottom: 2px; }
 .v-risk .cap-link { justify-self: start; }

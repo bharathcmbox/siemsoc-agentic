@@ -104,6 +104,7 @@ Business hours are 08:00–18:00.
 | Agent triage time per alert | 2 min | 0.5 – 5 min | Illustrative |
 | Agent investigation time (hot data only) | 8 min | 3 – 20 min | Illustrative |
 | Human review per approval or report | 5 min | 1 – 15 min | Illustrative |
+| Extra review when log text tries to instruct the agent (guardrails on; added to the approval wait and to people-time) | 5 min | 0 – 30 min | Illustrative |
 | Share of auto-closed alerts a person spot-checks (1 min each) | 5% | 0 – 50% | Illustrative |
 | Time for approved actions to execute (fixed) | 2 min | | Illustrative |
 | Human approval wait (business hours) | 10 min | 1 – 60 min | Illustrative |

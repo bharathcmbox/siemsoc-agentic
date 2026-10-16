@@ -17,7 +17,7 @@ Every story also has two deeper views, shown as cards under the race and linked 
 - **Inside the agent:** how the AI team worked the case, as one agent or as a team of specialists, with who is allowed to do what.
 - **Inside the pipeline:** how one log line is parsed, cleaned up, enriched, and routed, and where each team's data is stored.
 
-1. [What happens when a finance employee clicks a phishing link?](https://bharathcmbox.github.io/siemsoc-agentic/#story=phishing)
+1. [What happens when a finance employee clicks a phishing link?](https://bharathcmbox.github.io/siemsoc-agentic/#story=phishing), including [what if the attacker targets the agent?](https://bharathcmbox.github.io/siemsoc-agentic/#story=phishing&cmp=attack-agent)
 2. [Cheaper log storage: what do you give up?](https://bharathcmbox.github.io/siemsoc-agentic/#story=storage)
 3. [What if the attacker never trips an alarm?](https://bharathcmbox.github.io/siemsoc-agentic/#story=quiet)
 4. [Can your team find one real attack in 400 false alarms?](https://bharathcmbox.github.io/siemsoc-agentic/#story=storm)

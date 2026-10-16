@@ -1,7 +1,8 @@
 // Stories: the executive entry points. Each story is a scenario (and variant)
 // plus a few named comparisons, with plain-language names for each side.
 // title: shown on the lane; sub: one line under it; ref: how the narrator
-// refers to the team mid-sentence.
+// refers to the team mid-sentence. A comparison can set its own `variant`
+// of the story's scenario.
 
 const cfg = (arch, model, routing = false) => ({ arch, model, routing });
 
@@ -15,7 +16,10 @@ export const STORIES = [
     oneLiner: 'An accounts-payable specialist signs in on a fake login page. The attacker takes over her mailbox and tries to redirect a vendor payment before Friday.',
     hook: 'An attacker steals a login and tries to redirect a vendor payment. Watch two teams handle the same morning.',
     comparisons: [
-      { id: 'team', label: "Today's team vs AI-assisted team", a: cfg('index', 'traditional'), b: cfg('index', 'agentic'), names: [TODAY, AI] },
+      { id: 'team', chapter: 'Who stops the takeover first?', teaser: "Today's team against an AI-assisted team: same alerts, at the same moment.", label: "Today's team vs AI-assisted team", a: cfg('index', 'traditional'), b: cfg('index', 'agentic'), names: [TODAY, AI] },
+      { id: 'attack-agent', variant: 'injection', chapter: 'What if the attacker targets the agent?', teaser: 'Both teams are AI-assisted. The attacker leaves a note for the AI; only one team has guardrails around its agent.', label: 'AI-assisted team, without vs with guardrails', a: { ...cfg('index', 'agentic'), guard: false }, b: cfg('index', 'agentic'),
+        names: [{ title: 'AI agent, no guardrails', sub: 'Acts on what it reads; nobody checks its closures', ref: 'the team without guardrails' },
+                { title: 'AI agent with guardrails', sub: 'Log text is data; claims are checked; people review', ref: 'the team with guardrails' }] },
     ],
   },
   {
@@ -84,20 +88,20 @@ export const STORIES = [
   },
 ];
 
-const sameCfg = (x, y) => x.arch === y.arch && x.model === y.model && !!x.routing === !!y.routing;
+const sameCfg = (x, y) => x.arch === y.arch && x.model === y.model && !!x.routing === !!y.routing && (x.guard !== false) === (y.guard !== false);
 
 // The story and comparison matching a scenario, variant and pair of sides, if any.
 export function findStory(scenario, variant, sides) {
   for (const s of STORIES) {
-    if (s.scenario !== scenario || s.variant !== variant) continue;
-    const c = s.comparisons.find(c => sameCfg(c.a, sides[0]) && sameCfg(c.b, sides[1]));
+    if (s.scenario !== scenario) continue;
+    const c = s.comparisons.find(c => (c.variant ?? s.variant) === variant && sameCfg(c.a, sides[0]) && sameCfg(c.b, sides[1]));
     if (c) return { story: s, comparison: c };
   }
   return null;
 }
 
 export function storyFor(scenario, variant) {
-  return STORIES.find(s => s.scenario === scenario && s.variant === variant) ?? null;
+  return STORIES.find(s => s.scenario === scenario && (s.variant === variant || s.comparisons.some(c => c.variant === variant))) ?? null;
 }
 
 const ARCH = { index: ['Keeps every log searchable', 'the keep-everything team'], tiered: ['Hot + cheap storage', 'the cheap-storage team'], lake: ['Data lake storage', 'the data-lake team'] };
@@ -114,6 +118,10 @@ export function laneNames(scenario, variant, sides, costs) {
     const data = `${ARCH_SUB[c.arch]}${c.routing && c.arch !== 'index' ? ' + smart routing' : ''}`;
     if (a.model !== b.model) return { ...team, sub: data.charAt(0).toUpperCase() + data.slice(1) };
     if (a.arch !== b.arch) return { title: ARCH[c.arch][0], sub: `${team.title}${c.routing && c.arch !== 'index' ? ' · smart routing' : ''}`, ref: ARCH[c.arch][1] };
+    if ((a.guard !== false) !== (b.guard !== false)) {
+      return c.guard === false ? { title: 'No guardrails', sub: `${team.title} · ${data}`, ref: 'the team without guardrails' }
+        : { title: 'With guardrails', sub: `${team.title} · ${data}`, ref: 'the team with guardrails' };
+    }
     if (!!a.routing !== !!b.routing) {
       return c.routing ? { title: 'With smart routing', sub: `${team.title} · ${ARCH_SUB[c.arch]}`, ref: 'the team with smart routing' }
         : { title: 'No smart routing', sub: `${team.title} · ${ARCH_SUB[c.arch]}`, ref: 'the team without smart routing' };

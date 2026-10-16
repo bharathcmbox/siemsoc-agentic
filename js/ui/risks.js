@@ -112,7 +112,7 @@ export const GROUPS = [
   },
 ];
 
-const CLOSING = [
+export const CLOSING = [
   {
     id: 'accountability', title: 'Accountability', icon: 'record',
     line: 'Knowing what the agent did, and noticing when it gets worse.',
@@ -183,8 +183,9 @@ export function renderRiskBand({ onOpen }) {
 // from: { back } when the reader came from a story; adds a way back to it.
 const backToStory = from => (from ? h('button', { class: 'back', type: 'button', onclick: from.back }, '← Back to the story') : null);
 
-export function renderRisks(root, { topic, onBack, onOpen, from }) {
-  if (topic === 'injection') return renderInjection(root, { onBack: () => onOpen(null), onHome: onBack, from });
+// onWatch: plays the phishing story's "attacker targets the agent" comparison.
+export function renderRisks(root, { topic, onBack, onOpen, from, onWatch }) {
+  if (topic === 'injection') return renderInjection(root, { onBack: () => onOpen(null), onHome: onBack, from, onWatch });
   const onDeep = () => onOpen('injection');
   const jump = id => document.getElementById(`r-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -292,7 +293,7 @@ function step(i, body) {
 // The planted browser identifier, with the attacker's text highlighted.
 const plantedUA = () => h('code', { class: 'd-ua' }, 'Mozilla/5.0 (', h('mark', {}, PLANTED), ')');
 
-function renderInjection(root, { onBack, onHome, from }) {
+function renderInjection(root, { onBack, onHome, from, onWatch }) {
   const jump = id => document.getElementById(`d-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   root.replaceChildren(h('div', { class: 'r-page' },
     h('div', { class: 'r-backs' },
@@ -302,7 +303,8 @@ function renderInjection(root, { onBack, onHome, from }) {
     h('header', { class: 'r-head' },
       h('span', { class: 'eyebrow' }, 'Deep dive · Manipulation'),
       h('h1', {}, 'When the logs talk back'),
-      h('p', {}, 'An AI agent in a security team spends its day reading logs. Some of that text was written by the attacker. If the agent treats that text as an instruction, the attacker can steer it. This is called prompt injection, and it is the top risk in the OWASP list for AI applications.')),
+      h('p', {}, 'An AI agent in a security team spends its day reading logs. Some of that text was written by the attacker. If the agent treats that text as an instruction, the attacker can steer it. This is called prompt injection, and it is the top risk in the OWASP list for AI applications.'),
+      onWatch ? h('button', { type: 'button', class: 'cap-link risk', onclick: onWatch }, 'Watch it happen: the phishing story, without and with guardrails →') : null),
     h('nav', { class: 'd-steps', 'aria-label': 'Steps' },
       STEPS.map(([id, t], i) => h('button', { type: 'button', onclick: () => jump(id) }, h('span', { class: 'r-n' }, String(i + 1)), t))),
 
