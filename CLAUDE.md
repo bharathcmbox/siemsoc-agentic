@@ -15,7 +15,7 @@ All six planned phases are built and live at **https://bharathcmbox.github.io/si
   - **Inside the agent:** the AI team's steps as one agent or a team of specialists.
   - **Inside the pipeline:** one log line through parse, normalize, enrich, reduce and route.
 - **What AI agents can get wrong:** a "Before you trust an AI agent" band on the home screen, a Risks screen (`#risks`, or `#risks/<group>` to jump to a group), and the prompt-injection deep dive (`#risks/injection`). Each story's verdict has a "What could go wrong here" section, the race has amber caption links to it, and "Inside the agent" marks steps that read untrusted text. Opened from a story, the risk screens offer "Back to the story". All wording comes from `docs/ai-risks.md`.
-- **Analyst view (behind a switch):** side-by-side configuration (including an "Agent guardrails" switch, active only when the variant plants text for the agent), timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
+- **Analyst view (behind a switch):** side-by-side configuration (including an "Agent guardrails" switch; see "The guardrails switch" below), timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
 
 ## Layout
 
@@ -66,6 +66,25 @@ All six planned phases are built and live at **https://bharathcmbox.github.io/si
 3. Add a story to `js/stories.js` with team names. If it has more than one comparison, give each a `chapter` and a `teaser`.
 4. Write `docs/scenarios/<id>.md` with engine-output results.
 5. Update the README in two places: the story's direct link (`#story=<storyId>`) under "Stories", and the write-up under "Scenario write-ups".
+
+## The guardrails switch
+
+The guardrails are the controls around an AI agent: log text is treated as data, claims are checked, and a person reviews flagged cases. They are on by default and can be switched off per side, so a story can show what happens without them.
+
+- **Config:** `guard: false` on a side (`js/stories.js` or the analyst view). Leave the field out when guardrails are on; `encodeSide` adds `-0` to the side in the URL only when they are off.
+- **Where it matters:** only an AI-assisted side, in a variant where an event carries `injection` (`{ text, ticket }`). Everywhere else the switch changes nothing, and every existing result stays the same.
+- **Engine (`simulate.js`):**
+  - **Off:** at the end of the investigation, the agent takes the planted text as an instruction and closes the case (`injected`, phase `closed-wrongly`). Nothing is contained, and the attacker carries on.
+  - **On:** `harness: true` rules run (e.g. R-INJ, "Text that tries to instruct an AI"), the claim fails the check (`injectionCaught`), and the approval waits `injectionReviewMin` extra minutes, counted as people time too.
+- **Analyst view (`panel.js`):** the "Agent guardrails" switch under "Smart routing". `main.js` calls `setPlanted()` on each panel before `setConfig()`. The switch is disabled with a note for today's team, or when the variant has no planted text. The side's tag shows "no guardrails" when off.
+- **Executive view:** the phishing story's "What if the attacker targets the agent?" (`cmp=attack-agent`, variant `injection`). The narrator has moments for the note being believed or caught (tag `injection`), and the verdict marks played risks "In this race".
+- **Fairness:** credit the guardrails only for what they change, and show their cost (the extra review, and the minute the attacker gets in the mailbox). Today's team isn't modeled as being fooled by planted text; the scenario write-up says so.
+- **Adding another planted-text variant:**
+  1. Give the attacker event an `injection` (via `eventOverrides`), and timing the agent reads before it acts. The engine's log text for both outcomes names "the forwarding rule"; move that wording into the scenario's `labels` first.
+  2. Add any `harness: true` rule with `addRules`.
+  3. Add the variant's `risks` (mark the ones the race shows with `played`).
+  4. Add a comparison with `variant` and one side `guard: false`.
+  5. Check the `nogu` rows of `node tests/run-all.mjs`, and update the scenario write-up and `docs/ai-risks.md`.
 
 ## Constraints
 
