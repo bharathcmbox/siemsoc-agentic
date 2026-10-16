@@ -35,6 +35,20 @@ export function createPanel(root, name, { onConfig, onInfo, onPipeline, onAgent 
       'Promote suspicious events from cheap storage to real-time detection. ', routingNote),
     h('button', { type: 'button', class: 'info-btn', 'aria-label': 'What is smart routing?', title: 'What is this?', onclick: () => onInfo() }, 'i'),
   );
+  // The agent's guardrails. They only change anything when the scenario
+  // variant plants text for the agent, so elsewhere the switch is disabled.
+  let planted = false;
+  const guardInput = h('input', {
+    type: 'checkbox', role: 'switch', 'aria-label': 'Agent guardrails',
+    onchange: e => { const { guard, ...rest } = config; onConfig(e.target.checked ? rest : { ...rest, guard: false }); },
+  });
+  const guardNote = h('small');
+  const guardBox = h('div', { class: 'routing' },
+    h('label', { class: 'switch' }, guardInput, h('span')),
+    h('div', { class: 'txt' },
+      h('strong', {}, 'Agent guardrails'),
+      'Log text is treated as data, claims are checked, and a person reviews flagged cases. ', guardNote),
+  );
 
   const title = h('h3');
   const tag = h('span', { class: 'tag' });
@@ -54,6 +68,7 @@ export function createPanel(root, name, { onConfig, onInfo, onPipeline, onAgent 
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Data architecture'), arch.el),
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Operating model'), model.el),
       routingBox,
+      guardBox,
     ),
     archBox,
     counters,
@@ -99,6 +114,8 @@ export function createPanel(root, name, { onConfig, onInfo, onPipeline, onAgent 
 
   return {
     setTitle(t) { title.textContent = t; },
+    // applies: whether the current variant plants text for the agent.
+    setPlanted(applies) { planted = applies; },
     setConfig(cfg) {
       config = cfg;
       arch.set(cfg.arch);
@@ -109,7 +126,14 @@ export function createPanel(root, name, { onConfig, onInfo, onPipeline, onAgent 
       routingInput.disabled = disabled;
       routingBox.classList.toggle('disabled', disabled);
       routingNote.textContent = disabled ? 'Not needed here: with index-at-ingest, everything is already in the hot tier.' : '';
-      tag.textContent = `${ARCH_LABELS[cfg.arch]} · ${MODEL_LABELS[cfg.model]}${cfg.routing && !disabled ? ' · routing on' : ''}${cfg.guard === false ? ' · no guardrails' : ''}`;
+      const agentic = cfg.model === 'agentic';
+      const guardOff = !agentic || !planted;
+      guardInput.checked = cfg.guard !== false;
+      guardInput.disabled = guardOff;
+      guardBox.classList.toggle('disabled', guardOff);
+      guardNote.textContent = !agentic ? 'Only applies to an AI-assisted team.'
+        : !planted ? 'Only matters when the attacker plants text for the agent: try Scenario 1, "Attacker leaves a note for the AI agent".' : '';
+      tag.textContent = `${ARCH_LABELS[cfg.arch]} · ${MODEL_LABELS[cfg.model]}${cfg.routing && !disabled ? ' · routing on' : ''}${agentic && cfg.guard === false ? ' · no guardrails' : ''}`;
     },
 
     setResult(res, extra, params) {

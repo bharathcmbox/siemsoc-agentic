@@ -15,7 +15,7 @@ All six planned phases are built and live at **https://bharathcmbox.github.io/si
   - **Inside the agent:** the AI team's steps as one agent or a team of specialists.
   - **Inside the pipeline:** one log line through parse, normalize, enrich, reduce and route.
 - **What AI agents can get wrong:** a "Before you trust an AI agent" band on the home screen, a Risks screen (`#risks`, or `#risks/<group>` to jump to a group), and the prompt-injection deep dive (`#risks/injection`). Each story's verdict has a "What could go wrong here" section, the race has amber caption links to it, and "Inside the agent" marks steps that read untrusted text. Opened from a story, the risk screens offer "Back to the story". All wording comes from `docs/ai-risks.md`.
-- **Analyst view (behind a switch):** side-by-side configuration, timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
+- **Analyst view (behind a switch):** side-by-side configuration (including an "Agent guardrails" switch, active only when the variant plants text for the agent), timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
 
 ## Layout
 

@@ -123,7 +123,10 @@ function runAll() {
   const scrub = $('scrub');
   scrub.min = state.start; scrub.max = state.end; scrub.step = 1;
   state.clock = Math.min(Math.max(state.clock, state.start), state.end);
+  const v = scn.variants.find(x => x.id === state.variant);
+  const planted = scn.events.some(e => e.injection) || Object.values(v?.eventOverrides ?? {}).some(e => e.injection);
   panels.forEach((p, i) => {
+    p.setPlanted(planted);
     p.setConfig(state.sides[i]);
     p.setTitle(`Side ${i ? 'B' : 'A'}: ${state.names[i].title}`);
     p.setResult(state.results[i], state.extras[i], state.params);
