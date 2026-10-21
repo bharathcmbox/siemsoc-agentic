@@ -16,7 +16,7 @@ All six planned phases are built and live at **https://bharathcmbox.github.io/si
   - **Inside the pipeline:** one log line through parse, normalize, enrich, reduce and route.
 - **What AI agents can get wrong:** a "Before you trust an AI agent" band on the home screen, a Risks screen (`#risks`, or `#risks/<group>` to jump to a group), and the prompt-injection deep dive (`#risks/injection`). Each story's verdict has a "What could go wrong here" section, the race has amber caption links to it, and "Inside the agent" marks steps that read untrusted text. Opened from a story, the risk screens offer "Back to the story". All wording comes from `docs/ai-risks.md`.
 - **Analyst view (behind a switch):** side-by-side configuration (including an "Agent guardrails" switch; see "The guardrails switch" below), timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
-- **Entity Resolution Lab (`entities.html`):** a separate hands-on page on tying logs from many sources to one device or person, linked from the home screen's footer.
+- **Entity Resolution Lab (`entities.html`):** a separate hands-on page on tying logs from many sources to one device or person, opened from its own card at the end of the home screen's stories.
 
 ## Layout
 
