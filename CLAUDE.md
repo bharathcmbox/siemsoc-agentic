@@ -16,10 +16,12 @@ All six planned phases are built and live at **https://bharathcmbox.github.io/si
   - **Inside the pipeline:** one log line through parse, normalize, enrich, reduce and route.
 - **What AI agents can get wrong:** a "Before you trust an AI agent" band on the home screen, a Risks screen (`#risks`, or `#risks/<group>` to jump to a group), and the prompt-injection deep dive (`#risks/injection`). Each story's verdict has a "What could go wrong here" section, the race has amber caption links to it, and "Inside the agent" marks steps that read untrusted text. Opened from a story, the risk screens offer "Back to the story". All wording comes from `docs/ai-risks.md`.
 - **Analyst view (behind a switch):** side-by-side configuration (including an "Agent guardrails" switch; see "The guardrails switch" below), timelines, architecture diagram, pipeline walk-through, assumption sliders. Shares state with the executive view.
+- **Entity Resolution Lab (`entities.html`):** a separate hands-on page on tying logs from many sources to one device or person, linked from the home screen's footer.
 
 ## Layout
 
 - `index.html`: the single-page app, with four screens: home (story picker), exec (race view), analyst (detailed view), risks (what AI agents can get wrong)
+- `entities.html`: the Entity Resolution Lab, a separate self-contained page (inline CSS and JS, no imports) in four chapters: connecting logs, an unknown log format, known vs new entity, and a person's merge. Its palette is a copy of `css/theme.css` and must stay in step with it; its numbers are in `docs/assumptions.md` §7b; its concepts are in `docs/entity-resolution.md`. It shares the theme setting (`soc-sim.theme`) with the app
 - `css/theme.css`: palette tokens for both themes (dark default), the bundled font, page basics
 - `css/exec.css`, `css/analyst.css`, `css/risks.css`: styles for each view
 - `js/main.js`: app controller, with shared state, playback, presets, view switch, theme toggle, and the URL hash
@@ -44,6 +46,7 @@ All six planned phases are built and live at **https://bharathcmbox.github.io/si
   - `primer.md`: concepts
   - `assumptions.md`: every number; §9 lists sources
   - `ai-risks.md`: the source for all wording about AI risks and guardrails, with sources
+  - `entity-resolution.md`: the concepts behind the Entity Resolution Lab
   - `scenarios/*.md`: one per scenario, with results tables
 - `tests/` (dev only, needs Node):
   - `node tests/run-all.mjs`: metrics for every scenario × configuration (plus `nogu` rows, guardrails off, for variants with planted text)

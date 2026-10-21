@@ -77,7 +77,8 @@ export function renderHome(root, { onStory, onRisks }) {
     renderRiskBand({ onOpen: onRisks }),
     h('p', { class: 'home-foot' },
       h('span', {}, 'All companies, people and figures are fictional or illustrative.'),
-      h('span', {}, 'Want the details? Open any story and switch on Analyst view.')),
+      h('span', {}, 'Want the details? Open any story and switch on Analyst view.'),
+      h('a', { href: 'entities.html' }, 'Lab: how logs from many systems are tied to one device or person →')),
   );
 }
 

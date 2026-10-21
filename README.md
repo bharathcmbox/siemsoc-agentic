@@ -33,6 +33,19 @@ A neutral guide to the risks of AI agents in a security team, and the guardrails
 
 Each story's verdict also lists what could go wrong with the AI-assisted team in that story, with the guardrail for each, and the race offers amber links at the moments where those risks apply.
 
+### Entity Resolution Lab
+
+**[Open the lab](https://bharathcmbox.github.io/siemsoc-agentic/entities.html)**
+
+A separate hands-on page: how a security platform works out that logs from many systems (an endpoint sensor, the firewall, DNS, DHCP, the sign-in service, the people directory) describe the same laptop or the same person. Four chapters:
+
+1. **Same thing, many names:** step through the techniques and watch 14 apparently different things become three.
+2. **A feed you've never seen:** work out what an unknown log format's fields mean from three clues, and see what a flipped mapping does.
+3. **Seen it before, or new?:** score incoming records against known entities, move the thresholds, and switch off the safeguards to see what breaks.
+4. **"That's the same one":** an analyst corrects the match; see the merge, the re-filed history, and the alert that was hiding across two IDs.
+
+The page is self-contained: one HTML file with no other files needed.
+
 ### Analyst view
 
 The **Analyst view** switch opens the detailed comparison, where you set each side yourself:
@@ -57,6 +70,7 @@ To run it on your own machine, run `python3 -m http.server` in this folder and o
 - [Primer: from traditional SOC to agentic SOC](docs/primer.md)
 - [Metrics and cost assumptions](docs/assumptions.md)
 - [What AI agents can get wrong](docs/ai-risks.md)
+- [Entity resolution: who is this?](docs/entity-resolution.md)
 - Scenario write-ups:
   1. [Phishing to BEC](docs/scenarios/01-phishing-to-bec.md)
   2. [Where did the evidence go?](docs/scenarios/02-where-did-the-evidence-go.md) (includes the quiet-attacker variant)
