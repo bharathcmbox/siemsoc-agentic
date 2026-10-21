@@ -1,0 +1,1161 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Entity Resolution Lab</title>
+  <meta name="description" content="A hands-on lab: how a security platform works out that logs from many systems describe the same laptop or the same person. Vendor-neutral and illustrative.">
+  <script>
+    // Apply the saved theme before first paint. Dark is the default; shared with the simulator.
+    try { document.documentElement.dataset.theme = localStorage.getItem('soc-sim.theme') || 'dark'; } catch { /* storage unavailable */ }
+  </script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='9' cy='10' r='5' fill='%235a72a6'/%3E%3Ccircle cx='23' cy='10' r='5' fill='%232f8a7e'/%3E%3Ccircle cx='16' cy='24' r='5' fill='%23d29a3c'/%3E%3Cpath d='M9 10 23 10 16 24z' fill='none' stroke='%235d6878' stroke-width='2'/%3E%3C/svg%3E">
+  <style>
+    /* Self-contained page. The palette is a copy of css/theme.css (same token names and values);
+       keep the two in step. The font falls back to system fonts when the page is opened on its own. */
+    @font-face {
+      font-family: 'Figtree';
+      font-style: normal;
+      font-weight: 400 700;
+      font-display: swap;
+      src: url('vendor/fonts/figtree-latin.woff2') format('woff2');
+    }
+    :root {
+      --bg: #f4f6f8; --surface: #ffffff; --soft: #eef1f5; --line: #e2e7ed; --ink: #1e2633; --muted: #5d6878;
+      --a: #5a72a6; --a-soft: #e8edf6; --b: #2f8a7e; --b-soft: #e2f1ee;
+      --undetected: #d29a3c; --active: #c96565; --stopped: #4f9a6f; --calm: #dde3ea;
+      --good-ink: #2f7a52; --bad-ink: #b04a4a; --focus: #3b6fd6; --glow: rgba(90, 114, 166, 0.06); --on-accent: #ffffff;
+      --detect: #a8711a; --detect-soft: #fbf1de; --agent: #7a5cc4; --agent-soft: #efeafa; --good-soft: #e3f2ea; --bad-soft: #f8e9e8;
+      --radius: 12px;
+      --font: 'Figtree', 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg: #0f141b; --surface: #161d26; --soft: #1d2531; --line: #253040; --ink: #e7ecf2; --muted: #98a4b3;
+        --a: #93a9de; --a-soft: #232d40; --b: #5fc2b2; --b-soft: #1a302d;
+        --undetected: #d9a752; --active: #dc8481; --stopped: #6cbd8e; --calm: #2a3443;
+        --good-ink: #7fd0a1; --bad-ink: #e59a97; --focus: #93b4f7; --glow: rgba(147, 169, 222, 0.10); --on-accent: #0f141b;
+        --detect: #e0b25e; --detect-soft: #392e18; --agent: #b29cf0; --agent-soft: #2a2440; --good-soft: #1b3326; --bad-soft: #3a2323;
+        color-scheme: dark;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0f141b; --surface: #161d26; --soft: #1d2531; --line: #253040; --ink: #e7ecf2; --muted: #98a4b3;
+      --a: #93a9de; --a-soft: #232d40; --b: #5fc2b2; --b-soft: #1a302d;
+      --undetected: #d9a752; --active: #dc8481; --stopped: #6cbd8e; --calm: #2a3443;
+      --good-ink: #7fd0a1; --bad-ink: #e59a97; --focus: #93b4f7; --glow: rgba(147, 169, 222, 0.10); --on-accent: #0f141b;
+      --detect: #e0b25e; --detect-soft: #392e18; --agent: #b29cf0; --agent-soft: #2a2440; --good-soft: #1b3326; --bad-soft: #3a2323;
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    body {
+      margin: 0;
+      background-color: var(--bg);
+      background-image: radial-gradient(1100px 420px at 50% -160px, var(--glow), transparent 70%);
+      background-repeat: no-repeat;
+      color: var(--ink);
+      font: 16px/1.55 var(--font);
+      font-variant-numeric: tabular-nums;
+      padding-left: max(16px, env(safe-area-inset-left, 0px));
+      padding-right: max(16px, env(safe-area-inset-right, 0px));
+      padding-block: 0 48px;
+    }
+    button, select, input { font: inherit; color: inherit; }
+    a { color: var(--a); }
+    :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+    [hidden] { display: none !important; }
+    .wrap { max-width: 1120px; margin: 0 auto; }
+    h1, h2, h3 { text-wrap: balance; margin: 0; }
+    p { margin: 0; }
+    code, .mono { font-family: var(--mono); font-size: 0.86em; }
+
+    /* ---------- app bar and hero ---------- */
+    .appbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 18px 6px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.05rem; color: var(--ink); text-decoration: none; }
+    .brand svg { width: 26px; height: 26px; }
+    .bar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pill-btn {
+      border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 6px 14px; font-size: 0.85rem; color: var(--muted);
+      display: inline-flex; align-items: center; gap: 8px; cursor: pointer; text-decoration: none;
+    }
+    .pill-btn:hover { color: var(--ink); }
+    .pill-btn svg { width: 15px; height: 15px; }
+    .eyebrow { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+
+    .hero { padding-block: 32px 20px; display: grid; gap: 14px; max-width: 780px; }
+    .hero h1 { font-size: clamp(1.8rem, 3.4vw, 2.4rem); line-height: 1.15; letter-spacing: -0.01em; }
+    .hero p { color: var(--muted); font-size: 1.08rem; }
+    .chapters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 28px; }
+    @media (max-width: 860px) { .chapters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 480px) { .chapters { grid-template-columns: 1fr; } }
+    .chapter-link {
+      display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; text-decoration: none; color: var(--ink);
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; transition: border-color .15s;
+    }
+    .chapter-link:hover { border-color: var(--a); }
+    .chapter-link b { font-size: 0.98rem; line-height: 1.3; }
+    .chapter-link span { display: block; font-size: 0.84rem; color: var(--muted); line-height: 1.4; margin-top: 2px; }
+    .num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--soft); color: var(--muted); font-size: 0.82rem; font-weight: 700; flex: none; }
+
+    /* ---------- chapters ---------- */
+    .chapter { margin-top: 44px; display: grid; gap: 16px; scroll-margin-top: 16px; }
+    .chapter-head { display: grid; gap: 8px; max-width: 800px; }
+    .chapter-head h2 { font-size: clamp(1.4rem, 2.8vw, 1.8rem); line-height: 1.2; display: flex; gap: 12px; align-items: center; }
+    .chapter-head h2 .num { width: 32px; height: 32px; font-size: 0.95rem; background: var(--a); color: var(--on-accent); }
+    .chapter-head p { color: var(--muted); }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; min-width: 0; align-content: start; }
+    @media (max-width: 520px) { .card { padding: 16px; } }
+    .card h3 { font-size: 1.05rem; margin-bottom: 8px; }
+    .muted { color: var(--muted); }
+    .small { font-size: 0.86rem; }
+    .grid-2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+    @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr; } }
+    .takeaway { border-left: 4px solid var(--a); background: var(--a-soft); border-radius: 8px; padding: 12px 16px; }
+    .takeaway b { display: block; margin-bottom: 2px; }
+    .warn { border-left-color: var(--undetected); background: var(--detect-soft); }
+
+    /* steppers and segmented controls */
+    .steps { display: flex; flex-wrap: wrap; gap: 8px; }
+    .step-btn {
+      display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--muted);
+      border-radius: 999px; padding: 5px 12px 5px 6px; font-size: 0.86rem; cursor: pointer;
+    }
+    .step-btn .num { width: 22px; height: 22px; font-size: 0.75rem; }
+    .step-btn:hover { color: var(--ink); border-color: var(--a); }
+    .step-btn[aria-pressed="true"] { color: var(--ink); border-color: var(--a); background: var(--a-soft); font-weight: 600; }
+    .step-btn[aria-pressed="true"] .num { background: var(--a); color: var(--on-accent); }
+    .step-btn.done .num { background: var(--a-soft); color: var(--a); }
+    .nav-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .btn {
+      border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 14px; font-size: 0.9rem; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn:hover:not(:disabled) { border-color: var(--a); }
+    .btn:disabled { opacity: 0.4; cursor: default; }
+    .btn.primary { background: var(--ink); color: var(--surface); border-color: var(--ink); font-weight: 600; }
+    .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; flex-wrap: wrap; }
+    .seg button { border: 0; background: none; padding: 6px 14px; font-size: 0.86rem; color: var(--muted); cursor: pointer; }
+    .seg button[aria-pressed="true"] { background: var(--soft); color: var(--ink); font-weight: 600; }
+
+    .stats { display: flex; flex-wrap: wrap; gap: 10px 28px; }
+    .stat b { display: block; font-size: 1.6rem; line-height: 1.15; }
+    .stat span { font-size: 0.82rem; color: var(--muted); }
+
+    /* ---------- chapter 1: graph ---------- */
+    .ch1-top { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    @media (max-width: 900px) { .ch1-top { grid-template-columns: 1fr; } }
+    .graph svg { width: 100%; height: auto; display: block; }
+    .g-node rect { stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+    .g-node text { font-family: var(--mono); font-size: 12px; fill: var(--ink); }
+    .g-node .kind, .g-note { paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+    .g-node .kind { font-family: var(--font); font-size: 10.5px; fill: var(--muted); }
+    .g-edge { fill: none; stroke-width: 1.6; }
+    .g-edge.canon { stroke: var(--muted); stroke-dasharray: 2 4; stroke-linecap: round; stroke-width: 2; }
+    .g-edge.strong { stroke: var(--ink); stroke-width: 2; }
+    .g-edge.bridge { stroke: var(--detect); stroke-dasharray: 7 4; stroke-width: 2; }
+    .g-edge.reject { stroke: var(--active); stroke-dasharray: 3 5; opacity: 0.85; }
+    .g-edge.relation { stroke: var(--muted); stroke-width: 2; }
+    .g-edge.fresh { stroke-width: 3.2; }
+    .g-box { fill: none; stroke-width: 1.5; rx: 14; }
+    .g-box-label { font-size: 12px; font-weight: 700; }
+    .g-note { font-size: 11px; fill: var(--muted); }
+    .g-rel { font-size: 11.5px; fill: var(--ink); font-weight: 600; paint-order: stroke; stroke: var(--surface); stroke-width: 6px; stroke-linejoin: round; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 0.8rem; color: var(--muted); }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend svg { width: 26px; height: 8px; }
+    .explain { display: grid; gap: 12px; }
+    .explain h3 { font-size: 1.15rem; margin: 0; }
+    .links-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 0.88rem; }
+    .links-list li { display: grid; grid-template-columns: 14px 1fr; gap: 8px; align-items: baseline; }
+    .links-list i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    .records { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    @media (max-width: 420px) { .records { grid-template-columns: 1fr; } }
+    .rec { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; background: var(--surface); min-width: 0; }
+    .rec-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .rec-head b { font-size: 0.92rem; }
+    .raw { font-family: var(--mono); font-size: 0.78rem; background: var(--soft); border-radius: 6px; padding: 8px 10px; overflow-wrap: anywhere; line-height: 1.5; }
+    .maps { display: flex; flex-wrap: wrap; gap: 4px 6px; font-size: 0.76rem; }
+    .maps span { background: var(--soft); border-radius: 4px; padding: 1px 6px; color: var(--muted); }
+    .maps span b { color: var(--ink); font-weight: 600; }
+    .tag { display: inline-flex; align-items: center; gap: 5px; font-size: 0.74rem; font-weight: 600; border-radius: 999px; padding: 1px 9px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+    .tag.dev { color: var(--a); border-color: var(--a); background: var(--a-soft); }
+    .tag.per { color: var(--b); border-color: var(--b); background: var(--b-soft); }
+    .tag.first { color: var(--agent); border-color: var(--agent); background: var(--agent-soft); }
+    .tag.good { color: var(--good-ink); border-color: var(--stopped); background: var(--good-soft); }
+    .tag.bad { color: var(--bad-ink); border-color: var(--active); background: var(--bad-soft); }
+    .tag.amber { color: var(--detect); border-color: var(--undetected); background: var(--detect-soft); }
+
+    /* ---------- chapter 2: field mapping ---------- */
+    .format-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .table-scroll { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 0.88rem; }
+    th { text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    tr:last-child td { border-bottom: 0; }
+    .fields td:first-child { font-family: var(--mono); font-weight: 700; }
+    .vals { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); overflow-wrap: anywhere; max-width: 210px; }
+    .sig { display: grid; grid-template-columns: 62px 1fr 30px; gap: 6px; align-items: center; font-size: 0.74rem; color: var(--muted); min-width: 170px; }
+    .bar { height: 6px; border-radius: 3px; background: var(--soft); overflow: hidden; }
+    .bar i { display: block; height: 100%; background: var(--a); border-radius: 3px; }
+    .bar.na i { background: none; }
+    .fields select { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 4px 6px; font-size: 0.85rem; max-width: 190px; }
+    .conf { font-weight: 700; }
+    .field-note { font-size: 0.76rem; margin-top: 4px; }
+    @media (max-width: 760px) {
+      .fields thead { display: none; }
+      .fields tr { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+      .fields td { border: 0; padding: 0; }
+      .vals { max-width: none; }
+    }
+    .readout { display: grid; gap: 10px; }
+    .kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 0.86rem; }
+    .kv dt { color: var(--muted); }
+    .kv dd { margin: 0; font-family: var(--mono); font-size: 0.82rem; overflow-wrap: anywhere; }
+
+    /* ---------- chapter 3: matcher ---------- */
+    .ch3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 16px; align-items: start; }
+    @media (max-width: 900px) { .ch3 { grid-template-columns: 1fr; } }
+    .cases { display: grid; gap: 8px; }
+    .case-btn {
+      text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 10px 12px; cursor: pointer;
+      display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start;
+    }
+    .case-btn:hover { border-color: var(--a); }
+    .case-btn[aria-pressed="true"] { border-color: var(--a); background: var(--a-soft); box-shadow: inset 4px 0 0 var(--a); }
+    .case-btn[aria-pressed="true"] .num { background: var(--a); color: var(--on-accent); }
+    .case-btn b { display: block; font-size: 0.92rem; line-height: 1.3; }
+    .case-btn span { font-size: 0.8rem; color: var(--muted); }
+    .controls { display: grid; gap: 12px; padding-top: 14px; margin-top: 6px; border-top: 1px solid var(--line); }
+    .slider { display: grid; gap: 4px; font-size: 0.86rem; }
+    .slider div { display: flex; justify-content: space-between; gap: 8px; }
+    .slider input { width: 100%; accent-color: var(--a); }
+    .switch { display: flex; gap: 10px; align-items: flex-start; font-size: 0.86rem; cursor: pointer; }
+    .switch input { width: 16px; height: 16px; margin-top: 3px; accent-color: var(--a); flex: none; }
+    .switch small { display: block; color: var(--muted); font-size: 0.78rem; }
+    .cand { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; }
+    .cand-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+    .cand-head b { font-size: 0.98rem; }
+    .score { font-weight: 700; font-size: 1.1rem; }
+    .meter { position: relative; height: 10px; border-radius: 5px; background: var(--soft); }
+    .meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; transition: width .3s; }
+    .meter .mark { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); opacity: 0.5; }
+    .evidence { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 0.84rem; }
+    .evidence li { display: grid; grid-template-columns: 48px 1fr; gap: 8px; }
+    .evidence .pts { font-weight: 700; text-align: right; }
+    .evidence .pts.pos { color: var(--good-ink); }
+    .evidence .pts.neg { color: var(--bad-ink); }
+    .evidence .pts.zero { color: var(--muted); }
+    .decision { border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; border: 1px solid var(--line); }
+    .decision b { font-size: 1rem; }
+    .decision.link { background: var(--good-soft); border-color: var(--stopped); }
+    .decision.review { background: var(--detect-soft); border-color: var(--undetected); }
+    .decision.new { background: var(--a-soft); border-color: var(--a); }
+    .decision.amb { background: var(--bad-soft); border-color: var(--active); }
+    .decision.none { background: var(--soft); }
+    .known { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+    .known .rec { gap: 4px; font-size: 0.82rem; }
+    .known .rec div { color: var(--muted); }
+    details summary { cursor: pointer; font-weight: 600; font-size: 0.92rem; }
+    details[open] summary { margin-bottom: 10px; }
+
+    /* ---------- chapter 4: merge ---------- */
+    .entity-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+    @media (max-width: 620px) { .entity-cards { grid-template-columns: 1fr; } }
+    .ent { border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 6px; align-content: start; font-size: 0.86rem; transition: opacity .3s; }
+    .ent h4 { margin: 0; font-size: 1rem; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .ent .row { display: flex; justify-content: space-between; gap: 10px; }
+    .ent .row span:first-child { color: var(--muted); white-space: nowrap; }
+    .ent .row span:last-child { text-align: right; }
+    .ent.alias { opacity: 0.55; border-style: dashed; }
+    .risk { height: 8px; border-radius: 4px; background: var(--soft); position: relative; margin-top: 4px; }
+    .risk i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--undetected); transition: width .4s; }
+    .risk .line { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--active); }
+    .events td:first-child { font-weight: 700; white-space: nowrap; }
+    .events .info td { color: var(--muted); }
+    .flow { display: grid; gap: 10px; }
+    .flow-step { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; }
+    .flow-step.on { border-color: var(--a); background: var(--a-soft); }
+    .flow-step.wait { opacity: 0.5; }
+    .flow-step.on .num { background: var(--a); color: var(--on-accent); }
+    .flow-step b { display: block; }
+    .flow-step p { font-size: 0.88rem; color: var(--muted); margin-top: 2px; }
+    .flow-step.on p { color: var(--ink); }
+    .reason { display: grid; gap: 6px; font-size: 0.86rem; }
+    .reason input { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 7px 10px; width: 100%; }
+    .alert-box { border: 1px solid var(--active); background: var(--bad-soft); border-radius: 10px; padding: 12px 14px; font-size: 0.9rem; }
+    .alert-box b { color: var(--bad-ink); }
+    .log { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); display: grid; gap: 2px; }
+
+    /* ---------- patterns and footer ---------- */
+    .patterns { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .pattern { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--surface); display: grid; gap: 4px; align-content: start; }
+    .pattern b { font-size: 0.95rem; }
+    .pattern p { font-size: 0.86rem; color: var(--muted); }
+    .site-foot { margin-top: 44px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="appbar">
+      <a class="brand" href="./" aria-label="Back to the Agentic SOC Simulator">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M9 10 23 10 16 24z" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="2"/><circle cx="9" cy="10" r="5" fill="var(--a)"/><circle cx="23" cy="10" r="5" fill="var(--b)"/><circle cx="16" cy="24" r="5" fill="var(--undetected)"/></svg>
+        Entity Resolution Lab
+      </a>
+      <div class="bar-actions">
+        <a class="pill-btn" href="./">Simulator</a>
+        <button class="pill-btn" id="theme" type="button"></button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <span class="eyebrow">A hands-on lab</span>
+        <h1>Who is this? Connecting the dots across logs</h1>
+        <p>A security platform takes in logs from dozens of systems: an endpoint sensor on each laptop, the firewall, DNS, DHCP, the sign-in service, the people directory. Each one names the same laptop and the same person in its own way. Every alert, risk score and investigation depends on working out which records describe the same thing. Get it wrong, and one laptop under attack looks like three quiet ones.</p>
+      </section>
+
+      <nav class="chapters" aria-label="Chapters">
+        <a class="chapter-link" href="#ch1"><span class="num">1</span><div><b>Same thing, many names</b><span>The basic ways to connect logs from different systems</span></div></a>
+        <a class="chapter-link" href="#ch2"><span class="num">2</span><div><b>A feed you've never seen</b><span>Working out what an unknown log format means</span></div></a>
+        <a class="chapter-link" href="#ch3"><span class="num">3</span><div><b>Seen it before, or new?</b><span>Deciding if a record is a known entity</span></div></a>
+        <a class="chapter-link" href="#ch4"><span class="num">4</span><div><b>"That's the same one"</b><span>What happens when a person corrects the match</span></div></a>
+      </nav>
+
+      <section class="chapter" id="ch1" aria-labelledby="ch1-title">
+        <div class="chapter-head">
+          <h2 id="ch1-title"><span class="num">1</span>Same thing, many names</h2>
+          <p>Seven logs from one Tuesday morning at a fictional company. They all involve one laptop and one person, but nothing says so. Step through the techniques a platform uses, and watch 14 apparently different things become three.</p>
+        </div>
+        <div class="card" style="display:grid;gap:16px">
+          <div class="steps" id="ch1-steps" role="group" aria-label="Techniques"></div>
+          <div class="ch1-top">
+            <div class="graph">
+              <div id="ch1-graph" role="img" aria-label="Identifiers and the links found between them"></div>
+              <div class="legend" id="ch1-legend"></div>
+            </div>
+            <div class="explain" id="ch1-explain" aria-live="polite"></div>
+          </div>
+        </div>
+        <div class="records" id="ch1-records"></div>
+      </section>
+
+      <section class="chapter" id="ch2" aria-labelledby="ch2-title">
+        <div class="chapter-head">
+          <h2 id="ch2-title"><span class="num">2</span>A feed you've never seen</h2>
+          <p>A new web gateway starts sending logs, in a format nobody has written a parser for, with field names like <code>a</code>, <code>n</code> and <code>who</code>. Some of its values look a lot like things you already know. Here is how a platform works out what each field means, and why a person approves the result.</p>
+        </div>
+        <div class="grid-2">
+          <div class="card" style="display:grid;gap:12px">
+            <h3>Step 1: what kind of text is this?</h3>
+            <div class="raw" id="ch2-raw"></div>
+            <p class="small muted">The platform tries each format it knows, and picks the one that splits every line the same way.</p>
+            <div class="format-list" id="ch2-formats"></div>
+          </div>
+          <div class="card" style="display:grid;gap:10px">
+            <h3>Step 2: three clues for each field</h3>
+            <dl class="kv">
+              <dt>Name</dt><dd style="font-family:var(--font);font-size:0.86rem">Does the field name look like names other sources use for this meaning? (<code>src_ip</code>, <code>client</code>, <code>cip</code> …)</dd>
+              <dt>Shape</dt><dd style="font-family:var(--font);font-size:0.86rem">Do the values look like this kind of value: an address, a domain, a time, an account?</dd>
+              <dt>Seen before</dt><dd style="font-family:var(--font);font-size:0.86rem">Do the values match things you already hold? This is the strongest clue: if every value is a laptop name you already know, the field holds laptop names, whatever it is called.</dd>
+            </dl>
+            <p class="small muted" id="ch2-rule"></p>
+          </div>
+        </div>
+        <div class="card" style="display:grid;gap:12px">
+          <h3>Step 3: proposed meanings. Change any of them.</h3>
+          <div class="table-scroll">
+            <table class="fields">
+              <thead><tr><th>Field</th><th>Sample values</th><th>Clues</th><th>Meaning</th><th>Confidence</th></tr></thead>
+              <tbody id="ch2-fields"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="card readout" id="ch2-result" aria-live="polite"></div>
+          <div class="card" style="display:grid;gap:12px">
+            <h3>Things to get right</h3>
+            <div class="takeaway"><b>Keep the original text.</b>Store every raw line, and keep fields you couldn't map under their original names. A wrong guess can be fixed later; a field you threw away can't.</div>
+            <div class="takeaway"><b>Direction matters as much as type.</b>Knowing <code>a</code> and <code>b</code> are both addresses isn't enough. Mix up which one is the source and every connection points the wrong way.</div>
+            <div class="takeaway"><b>Mapping when stored vs when searched.</b>If meanings are applied when logs are stored, a fix only helps new logs. If they are applied when you search, a fix applies to old logs too, at the cost of slower searches.</div>
+            <div class="takeaway warn"><b>An AI assistant can draft the mapping. A person approves it.</b>AI can propose a parser from sample lines and a plain description. It reads text that outsiders can write, though, so treat the log text as data, never as instructions. See <a href="./#risks/injection">when the logs talk back</a>.</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="chapter" id="ch3" aria-labelledby="ch3-title">
+        <div class="chapter-head">
+          <h2 id="ch3-title"><span class="num">3</span>Seen it before, or new?</h2>
+          <p>Every new record raises the question: is this an entity you already know, or a new one? The platform looks up candidates that share an identifier, adds up the evidence for each, and compares the total with two thresholds. Pick a record, then move the thresholds and switch the safeguards off to see what breaks.</p>
+        </div>
+        <details class="card">
+          <summary>What the platform already knows (4 entities, plus one shared address)</summary>
+          <div class="known" id="ch3-known"></div>
+        </details>
+        <div class="ch3">
+          <div class="card" style="display:grid;gap:10px">
+            <h3>Incoming records</h3>
+            <div class="cases" id="ch3-cases" role="group" aria-label="Incoming records"></div>
+            <div class="controls" id="ch3-controls"></div>
+          </div>
+          <div class="card" style="display:grid;gap:14px" id="ch3-out" aria-live="polite"></div>
+        </div>
+        <details class="card">
+          <summary>The points behind the scores (illustrative)</summary>
+          <div class="table-scroll"><table><thead><tr><th>Evidence</th><th>Points</th><th>Why</th></tr></thead><tbody id="ch3-weights"></tbody></table></div>
+        </details>
+      </section>
+
+      <section class="chapter" id="ch4" aria-labelledby="ch4-title">
+        <div class="chapter-head">
+          <h2 id="ch4-title"><span class="num">4</span>"That's the same one"</h2>
+          <p>In record 5 of chapter 3, IT reimaged Jordan's laptop at 11:02. The new sensor reported in at 11:20 with a new sensor ID, and the platform, rightly cautious, created a new device: E-0219. An analyst knows better. Tag the two as one device and step through what a well-built platform does next.</p>
+        </div>
+        <div class="grid-2">
+          <div class="card" style="display:grid;gap:14px">
+            <div class="entity-cards" id="ch4-entities"></div>
+            <div style="display:grid;gap:8px">
+              <div class="nav-row" style="justify-content:space-between">
+                <h3 style="margin:0">What happened this morning</h3>
+                <div class="seg" id="ch4-mode" role="group" aria-label="When names are resolved"></div>
+              </div>
+              <p class="small muted" id="ch4-mode-note"></p>
+              <div class="table-scroll"><table class="events"><thead><tr><th>Time</th><th>Event</th><th>Filed under</th></tr></thead><tbody id="ch4-events"></tbody></table></div>
+              <p class="small muted">Detection rule: <b style="color:var(--ink)">alert when one device has 5 or more failed sign-ins within 60 minutes.</b></p>
+            </div>
+          </div>
+          <div class="card" style="display:grid;gap:14px">
+            <div class="reason" id="ch4-tag"></div>
+            <div class="flow" id="ch4-flow" aria-live="polite"></div>
+            <div class="nav-row" id="ch4-nav"></div>
+            <div class="log" id="ch4-log"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="chapter" id="patterns" aria-labelledby="patterns-title">
+        <div class="chapter-head">
+          <h2 id="patterns-title">Patterns you'll find in real platforms</h2>
+          <p>Different products package these ideas differently, but the building blocks are the same.</p>
+        </div>
+        <div class="patterns">
+          <div class="pattern"><b>One shared set of field names</b><p>Every source is mapped onto one common schema, so a rule written once works on all of them. Fields that don't fit are kept, not dropped.</p></div>
+          <div class="pattern"><b>The sensor as the best bridge</b><p>A first-party endpoint sensor knows its own name, addresses, hardware address and signed-in user in real time. Third-party logs that only carry an address are tied to a device through it.</p></div>
+          <div class="pattern"><b>Links with a time range</b><p>A context graph stores each link with when it was true, and looks back a few days so late-arriving logs still get linked.</p></div>
+          <div class="pattern"><b>Ranked sources of truth</b><p>When the asset inventory, the directory and the sensor disagree, a ranked list decides which one wins for each field.</p></div>
+          <div class="pattern"><b>Lookups when you search</b><p>Some platforms attach names to events when you search, from lookup tables. A correction to a table applies to all history at once.</p></div>
+          <div class="pattern"><b>Context added when stored</b><p>Others add names to events as they are stored, which makes searches fast. Corrections then need a backfill, or an alias table that every search goes through.</p></div>
+          <div class="pattern"><b>AI-drafted parsers</b><p>An assistant drafts the mapping for an unknown format from sample lines. A person reviews it before it is switched on.</p></div>
+          <div class="pattern"><b>Deny lists for shared values</b><p>Shared addresses, proxies, service accounts and placeholder names like "localhost" are kept out of matching, so they can't chain thousands of entities into one.</p></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-foot">
+      Part of a vendor-neutral study project. All companies, people, addresses and scores are fictional or illustrative.
+      Read the <a href="https://github.com/bharathcmbox/siemsoc-agentic/blob/main/docs/entity-resolution.md">write-up</a>,
+      the <a href="https://github.com/bharathcmbox/siemsoc-agentic/blob/main/docs/assumptions.md">assumptions</a>,
+      or go back to the <a href="./">Agentic SOC Simulator</a>.
+    </footer>
+  </div>
+  <noscript><p class="wrap">This lab needs JavaScript.</p></noscript>
+
+  <script type="module">
+    // ---------------- helpers ----------------
+    const $ = id => document.getElementById(id);
+    function h(tag, attrs = {}, ...kids) {
+      const el = document.createElement(tag);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (v == null || v === false) continue;
+        if (k === 'class') el.className = v;
+        else if (k === 'html') el.innerHTML = v;
+        else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+        else el.setAttribute(k, v === true ? '' : v);
+      }
+      for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) el.append(kid);
+      return el;
+    }
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    function s(tag, attrs = {}, ...kids) {
+      const el = document.createElementNS(SVGNS, tag);
+      for (const [k, v] of Object.entries(attrs)) if (v != null) el.setAttribute(k, v);
+      for (const kid of kids.flat(Infinity)) if (kid != null) el.append(kid);
+      return el;
+    }
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    // replaceChildren that skips empty slots (the DOM would print null as text).
+    const put = (el, ...kids) => el.replaceChildren(...kids.flat(Infinity).filter(k => k != null && k !== false));
+
+    // ---------------- theme ----------------
+    function paintTheme() {
+      const dark = document.documentElement.dataset.theme !== 'light';
+      const sun = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+      const moon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+      $('theme').innerHTML = (dark ? sun : moon) + (dark ? 'Light' : 'Dark');
+      $('theme').setAttribute('aria-label', `Switch to ${dark ? 'light' : 'dark'} background`);
+    }
+    $('theme').addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+      document.documentElement.dataset.theme = next;
+      try { localStorage.setItem('soc-sim.theme', next); } catch { /* storage unavailable */ }
+      paintTheme();
+    });
+    paintTheme();
+
+    // =====================================================================
+    // Chapter 1: same thing, many names
+    // =====================================================================
+    const KIND = {
+      host: 'device name', agent: 'sensor ID', mac: 'hardware address', asset: 'asset tag', ip: 'network address',
+      account: 'account', email: 'email / sign-in name', employee: 'employee ID', name: 'display name',
+    };
+    // side: dev (the laptop), per (the person), shared (the office's shared internet address)
+    const NODES = {
+      WS:    { label: 'WS-114', kind: 'host', side: 'dev' },
+      agent: { label: '7f3a9c21', kind: 'agent', side: 'dev', strong: true },
+      MACU:  { label: '3C-22-FB-91-0A-7E', kind: 'mac', side: 'dev', strong: true },
+      ws:    { label: 'ws-114', kind: 'host', side: 'dev' },
+      macl:  { label: '3c:22:fb:91:0a:7e', kind: 'mac', side: 'dev', strong: true },
+      fqdn:  { label: 'ws-114.corp.example', kind: 'host', side: 'dev' },
+      asset: { label: 'LT-0457', kind: 'asset', side: 'dev', strong: true },
+      ip:    { label: '10.20.4.17', kind: 'ip', side: 'dev' },
+      acct:  { label: 'CORP\\jlee', kind: 'account', side: 'per' },
+      jlee:  { label: 'jlee', kind: 'account', side: 'per' },
+      email: { label: 'jlee@corp.example', kind: 'email', side: 'per' },
+      emp:   { label: 'E1042', kind: 'employee', side: 'per', strong: true },
+      name:  { label: 'Jordan Lee', kind: 'name', side: 'per' },
+      nat:   { label: '203.0.113.10', kind: 'ip', side: 'shared' },
+    };
+    const LAYOUT = {
+      wide: {
+        w: 780, h: 500,
+        pos: {
+          WS: [90, 110], agent: [235, 110], MACU: [385, 110],
+          ws: [90, 200], macl: [385, 200],
+          fqdn: [90, 290], asset: [385, 290],
+          ip: [235, 380],
+          acct: [580, 110], jlee: [580, 200], email: [580, 290], emp: [715, 200], name: [715, 290],
+          nat: [480, 460],
+        },
+        bend: { 'nat-ip': 0, 'agent-ip': 0, 'nat-email': 0 },
+      },
+      narrow: {
+        w: 360, h: 720,
+        pos: {
+          WS: [95, 70], agent: [265, 70],
+          ws: [95, 140], MACU: [265, 140],
+          fqdn: [95, 210], macl: [265, 210],
+          asset: [95, 280], ip: [265, 280],
+          acct: [95, 430], jlee: [95, 500], email: [95, 570], emp: [265, 500], name: [265, 570],
+          nat: [180, 680],
+        },
+        bend: { 'agent-ip': -150, 'nat-ip': 220, 'nat-email': 0 },
+      },
+    };
+    // step: the technique that finds the link. type: canon | strong | bridge | reject
+    const EDGES = [
+      { a: 'WS', b: 'ws', step: 2, type: 'canon', why: '"WS-114" and "ws-114": same name, different case' },
+      { a: 'ws', b: 'fqdn', step: 2, type: 'canon', why: '"ws-114" is the short form of "ws-114.corp.example"' },
+      { a: 'MACU', b: 'macl', step: 2, type: 'canon', why: 'The same hardware address, written in two formats' },
+      { a: 'acct', b: 'jlee', step: 2, type: 'canon', why: '"CORP\\jlee" is "jlee" with the domain prefix' },
+      { a: 'jlee', b: 'email', step: 2, type: 'canon', why: '"jlee@corp.example" is the sign-in form of the same account' },
+      { a: 'agent', b: 'WS', step: 3, type: 'strong', why: 'The sensor reports its own ID and device name together' },
+      { a: 'agent', b: 'MACU', step: 3, type: 'strong', why: 'The sensor reports its own hardware address' },
+      { a: 'asset', b: 'macl', step: 3, type: 'strong', why: 'The asset inventory lists this hardware address for asset LT-0457' },
+      { a: 'asset', b: 'fqdn', step: 3, type: 'strong', why: 'The asset inventory lists this full device name for LT-0457' },
+      { a: 'emp', b: 'jlee', step: 3, type: 'strong', why: 'The people directory lists account jlee for employee E1042' },
+      { a: 'emp', b: 'name', step: 3, type: 'strong', why: 'The people directory lists E1042 as Jordan Lee' },
+      { a: 'macl', b: 'ip', step: 4, type: 'bridge', why: 'DHCP leased 10.20.4.17 to this hardware address from 09:01 to 17:01' },
+      { a: 'agent', b: 'ip', step: 4, type: 'bridge', why: 'The sensor reported 10.20.4.17 as its own address at 09:14' },
+      { a: 'nat', b: 'ip', step: 4, type: 'reject', why: 'Not linked: 203.0.113.10 is the office\'s shared internet address, used by about 600 devices' },
+      { a: 'nat', b: 'email', step: 4, type: 'reject', why: 'Not linked: a sign-in from a shared address says nothing about which device was used' },
+    ];
+    const RECORDS = [
+      { id: 'sensor', src: 'Endpoint sensor', first: true, nodes: ['agent', 'WS', 'acct', 'ip', 'MACU'],
+        raw: '{"agent_id":"7f3a9c21","ComputerName":"WS-114","UserName":"CORP\\\\jlee","LocalIP":"10.20.4.17","MAC":"3C-22-FB-91-0A-7E","ts":"09:14:05"}',
+        maps: [['agent_id', 'sensor ID'], ['ComputerName', 'device name'], ['UserName', 'account'], ['LocalIP', 'device address'], ['MAC', 'hardware address']] },
+      { id: 'dhcp', src: 'DHCP server', nodes: ['ip', 'macl', 'ws'],
+        raw: '09:01:12 DHCPACK on 10.20.4.17 to 3c:22:fb:91:0a:7e (ws-114) lease 8h',
+        maps: [['on …', 'device address'], ['to …', 'hardware address'], ['( … )', 'device name'], ['lease', 'valid until 17:01']] },
+      { id: 'dns', src: 'DNS server', nodes: ['ip'],
+        raw: '09:14:02 client 10.20.4.17#53122 query: payroll.finance.example IN A',
+        maps: [['client', 'source address'], ['query', 'domain looked up']] },
+      { id: 'fw', src: 'Firewall', nodes: ['ip', 'nat'],
+        raw: '09:14:03 allow src=10.20.4.17 dst=192.0.2.80 dpt=443 xlate=203.0.113.10',
+        maps: [['src', 'source address'], ['dst', 'destination address'], ['xlate', 'shared outside address']] },
+      { id: 'idp', src: 'Sign-in service', nodes: ['email', 'nat', 'WS'],
+        raw: '{"user":"jlee@corp.example","app":"Payroll","client_ip":"203.0.113.10","device":"WS-114","time":"09:14:09"}',
+        maps: [['user', 'sign-in name'], ['client_ip', 'source address'], ['device', 'device name']] },
+      { id: 'dir', src: 'People directory', nodes: ['jlee', 'email', 'name', 'emp'],
+        raw: '{"sAMAccountName":"jlee","mail":"jlee@corp.example","displayName":"Jordan Lee","employeeID":"E1042","dept":"Finance"}',
+        maps: [['sAMAccountName', 'account'], ['mail', 'email'], ['displayName', 'display name'], ['employeeID', 'employee ID']] },
+      { id: 'cmdb', src: 'Asset inventory', nodes: ['asset', 'fqdn', 'macl', 'emp'],
+        raw: '{"asset_tag":"LT-0457","fqdn":"ws-114.corp.example","mac":"3c:22:fb:91:0a:7e","owner":"E1042"}',
+        maps: [['asset_tag', 'asset tag'], ['fqdn', 'device name'], ['mac', 'hardware address'], ['owner', 'owner (employee ID)']] },
+    ];
+    const CH1_STEPS = [
+      { title: 'Raw logs', body: 'Seven logs, written between 09:01 and 09:14 by seven different systems. Taken literally, they mention 14 different things. Nothing yet tells a computer that "WS-114" and "ws-114.corp.example" are one laptop, or that "CORP\\jlee" is Jordan Lee.' },
+      { title: 'Common field names', body: 'Each source gets a parser that maps its own field names onto one shared set. ComputerName, the name in brackets in the DHCP line, and fqdn all become "device name". Nothing is linked yet, but every value now has a type, so values of the same type can be compared. The cards below show each mapping.' },
+      { title: 'Same value, written differently', body: 'Canonicalizing means writing each value the same way everywhere: lower-case names, one format for hardware addresses, no domain prefix on accounts, and knowing that a short device name is part of the full one.' },
+      { title: 'Strong identifiers', body: 'Some identifiers are unique and don\'t change: a sensor ID, a hardware address, an asset tag, an employee ID. When a trusted source lists two values together, they belong to the same entity. Device names and display names are weaker: they get reused and renamed, so they only link through a strong identifier.' },
+      { title: 'Bridge logs, within a time window', body: 'The firewall and DNS logs only know an address, and addresses get reused. So an address only counts with a time window: the DHCP lease and the sensor both tie 10.20.4.17 to this laptop at 09:14. The office\'s shared internet address is never used to link: it would tie everyone in the building together.' },
+      { title: 'Relationships, not merges', body: 'A person and a laptop are different entities. The sensor saw jlee signed in, the inventory lists E1042 as the owner, and the sign-in service saw the sign-in come from WS-114. That makes a relationship, "Jordan Lee uses this laptop", not a merge. Now any alert on the laptop can name its user, and the reverse.' },
+    ];
+    let ch1Step = 0;
+
+    function ch1Layout() {
+      return $('ch1-graph').clientWidth && $('ch1-graph').clientWidth < 560 ? LAYOUT.narrow : LAYOUT.wide;
+    }
+    // Union-find over the merge links found up to a step.
+    function components(step) {
+      const parent = Object.fromEntries(Object.keys(NODES).map(k => [k, k]));
+      const find = x => parent[x] === x ? x : (parent[x] = find(parent[x]));
+      for (const e of EDGES) if (e.step <= step && e.type !== 'reject') parent[find(e.a)] = find(e.b);
+      const groups = {};
+      for (const k of Object.keys(NODES)) (groups[find(k)] ||= []).push(k);
+      return { find, groups: Object.values(groups) };
+    }
+    function nodeWidth(k) { return NODES[k].label.length * 7.25 + 18; }
+
+    function renderCh1Graph() {
+      const L = ch1Layout();
+      const { groups } = components(ch1Step);
+      const svg = s('svg', { viewBox: `0 0 ${L.w} ${L.h}`, 'aria-hidden': 'true' });
+      const colorOf = k => {
+        if (ch1Step < 1) return { fill: 'var(--soft)', stroke: 'var(--line)' };
+        const side = NODES[k].side;
+        if (side === 'dev') return { fill: 'var(--a-soft)', stroke: 'var(--a)' };
+        if (side === 'per') return { fill: 'var(--b-soft)', stroke: 'var(--b)' };
+        return { fill: 'var(--detect-soft)', stroke: 'var(--undetected)' };
+      };
+
+      // Entity boxes: drawn around linked groups once strong identifiers are in.
+      const boxes = {};
+      if (ch1Step >= 2) {
+        for (const g of groups) {
+          if (g.length < 2) continue;
+          let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+          for (const k of g) {
+            const [x, y] = L.pos[k], w = nodeWidth(k) / 2;
+            x0 = Math.min(x0, x - w); x1 = Math.max(x1, x + w); y0 = Math.min(y0, y - 13); y1 = Math.max(y1, y + 28);
+          }
+          const pad = 12, top = ch1Step >= 3 ? 22 : 0;
+          const side = NODES[g[0]].side;
+          const named = ch1Step >= 3 && (g.includes('agent') || g.includes('emp'));
+          const box = { x: x0 - pad, y: y0 - pad - top, w: x1 - x0 + pad * 2, h: y1 - y0 + pad * 2 + top, side, named, g };
+          boxes[g.includes('agent') ? 'dev' : g.includes('emp') ? 'per' : g[0]] = box;
+          const stroke = side === 'dev' ? 'var(--a)' : 'var(--b)';
+          svg.append(s('rect', { class: 'g-box', x: box.x, y: box.y, width: box.w, height: box.h, rx: 14, stroke, 'stroke-dasharray': named ? null : '4 4', fill: named ? (side === 'dev' ? 'var(--a-soft)' : 'var(--b-soft)') : 'none', 'fill-opacity': named ? 0.45 : null }));
+          if (named) {
+            const label = g.includes('agent') ? 'Entity: laptop WS-114' : 'Entity: Jordan Lee (person)';
+            svg.append(s('text', { class: 'g-box-label', x: box.x + 12, y: box.y + 17, fill: stroke }, label));
+          }
+        }
+      }
+
+      // Relationship between the two entities.
+      if (ch1Step >= 5 && boxes.dev && boxes.per) {
+        const d = boxes.dev, p = boxes.per;
+        let path, lx, ly, anchor = 'middle';
+        if (L === LAYOUT.wide) {
+          const x1 = d.x + d.w / 2, x2 = p.x + p.w / 2, y = Math.min(d.y, p.y);
+          path = `M${x1} ${d.y} C ${x1} ${y - 50}, ${x2} ${y - 50}, ${x2} ${p.y}`;
+          lx = (x1 + x2) / 2; ly = y - 30;
+        } else {
+          const x = 180;
+          path = `M${x} ${d.y + d.h} L ${x} ${p.y}`;
+          lx = x; ly = (d.y + d.h + p.y) / 2 + 4;
+        }
+        svg.append(s('path', { class: 'g-edge relation', d: path, 'marker-end': 'url(#arrow)' }));
+        svg.append(s('text', { class: 'g-rel', x: lx, y: ly, 'text-anchor': anchor }, 'Jordan Lee uses this laptop'));
+      }
+      svg.prepend(s('defs', {}, s('marker', { id: 'arrow', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto-start-reverse' },
+        s('path', { d: 'M0 0 L10 5 L0 10z', fill: 'var(--muted)' }))));
+
+      // Links.
+      for (const e of EDGES) {
+        if (e.step > ch1Step) continue;
+        const [x1, y1] = L.pos[e.a], [x2, y2] = L.pos[e.b];
+        const bend = L.bend[`${e.a}-${e.b}`] || 0;
+        const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+        const len = Math.hypot(x2 - x1, y2 - y1) || 1;
+        const cx = mx + (-(y2 - y1) / len) * bend, cy = my + ((x2 - x1) / len) * bend;
+        svg.append(s('path', { class: `g-edge ${e.type}${e.step === ch1Step ? ' fresh' : ''}`, d: `M${x1} ${y1} Q ${cx} ${cy} ${x2} ${y2}` }));
+        if (e.type === 'reject') {
+          const tx = 0.25 * x1 + 0.5 * cx + 0.25 * x2, ty = 0.25 * y1 + 0.5 * cy + 0.25 * y2;
+          svg.append(s('path', { d: `M${tx - 6} ${ty - 6} L${tx + 6} ${ty + 6} M${tx + 6} ${ty - 6} L${tx - 6} ${ty + 6}`, stroke: 'var(--active)', 'stroke-width': 2.5, 'stroke-linecap': 'round' }));
+        }
+      }
+
+      // Nodes.
+      for (const [k, n] of Object.entries(NODES)) {
+        const [x, y] = L.pos[k], w = nodeWidth(k);
+        const c = colorOf(k);
+        const g = s('g', { class: 'g-node' });
+        g.append(s('rect', { x: x - w / 2, y: y - 13, width: w, height: 26, rx: 7, fill: 'var(--surface)', stroke: c.stroke, 'stroke-width': n.strong && ch1Step >= 3 ? 2.6 : 1.5 }));
+        g.append(s('rect', { x: x - w / 2, y: y - 13, width: w, height: 26, rx: 7, fill: c.fill, stroke: 'none' }));
+        g.append(s('text', { x, y: y + 4, 'text-anchor': 'middle' }, n.label));
+        if (ch1Step >= 1) g.append(s('text', { class: 'kind', x, y: y + 26, 'text-anchor': 'middle' }, KIND[n.kind] + (n.strong && ch1Step >= 3 ? ' · strong' : '')));
+        svg.append(g);
+      }
+      if (ch1Step >= 4) {
+        const [x, y] = L.pos.nat;
+        svg.append(s('text', { class: 'g-note', x, y: y - 20, 'text-anchor': 'middle' }, 'shared by ~600 devices'));
+      }
+      put($('ch1-graph'), svg);
+    }
+
+    function ch1Attribution() {
+      const { find } = components(ch1Step);
+      const dev = find('agent'), per = find('emp');
+      return RECORDS.map(r => {
+        const ties = new Set();
+        for (const n of r.nodes) {
+          if (n === 'nat') continue;
+          if (find(n) === dev) ties.add('dev');
+          if (find(n) === per) ties.add('per');
+        }
+        return ties;
+      });
+    }
+
+    function renderCh1() {
+      put($('ch1-steps'), ...CH1_STEPS.map((st, i) => h('button', {
+        class: `step-btn${i < ch1Step ? ' done' : ''}`, type: 'button', 'aria-pressed': String(i === ch1Step),
+        onclick: () => { ch1Step = i; renderCh1(); },
+      }, h('span', { class: 'num' }, String(i)), st.title)));
+
+      renderCh1Graph();
+
+      const { groups } = components(ch1Step);
+      const ties = ch1Attribution();
+      const tied = ties.filter(t => t.size).length;
+      const st = CH1_STEPS[ch1Step];
+      const fresh = EDGES.filter(e => e.step === ch1Step);
+      const swatch = { canon: 'var(--muted)', strong: 'var(--ink)', bridge: 'var(--detect)', reject: 'var(--active)' };
+      put($('ch1-explain'), 
+        h('span', { class: 'eyebrow' }, `Step ${ch1Step} of ${CH1_STEPS.length - 1}`),
+        h('h3', {}, st.title),
+        h('p', {}, st.body),
+        fresh.length ? h('ul', { class: 'links-list' }, fresh.map(e => h('li', {}, h('i', { style: `background:${swatch[e.type]}` }), e.why))) : null,
+        h('div', { class: 'stats' },
+          h('div', { class: 'stat' }, h('b', {}, String(groups.length)), h('span', {}, ch1Step >= 5 ? 'things, plus 1 relationship' : 'different things, as far as the platform can tell')),
+          h('div', { class: 'stat' }, h('b', {}, `${tied} of 7`), h('span', {}, 'logs tied to the laptop or to Jordan'))),
+        h('div', { class: 'nav-row' },
+          h('button', { class: 'btn', type: 'button', disabled: ch1Step === 0, onclick: () => { ch1Step--; renderCh1(); } }, '← Back'),
+          h('button', { class: 'btn primary', type: 'button', disabled: ch1Step === CH1_STEPS.length - 1, onclick: () => { ch1Step++; renderCh1(); } }, 'Next technique →')),
+      );
+
+      put($('ch1-records'), ...RECORDS.map((r, i) => h('div', { class: 'rec' },
+        h('div', { class: 'rec-head' },
+          h('b', {}, r.src),
+          h('span', { style: 'display:flex;gap:6px;flex-wrap:wrap' },
+            r.first ? h('span', { class: 'tag first' }, 'first-party') : h('span', { class: 'tag' }, 'third-party'),
+            ties[i].has('dev') ? h('span', { class: 'tag dev' }, 'laptop') : null,
+            ties[i].has('per') ? h('span', { class: 'tag per' }, 'Jordan') : null,
+            ties[i].size ? null : h('span', { class: 'tag' }, 'not tied yet'))),
+        h('div', { class: 'raw' }, r.raw),
+        ch1Step >= 1 ? h('div', { class: 'maps' }, r.maps.map(([f, m]) => h('span', {}, f, ' → ', h('b', {}, m)))) : null,
+      )));
+    }
+
+    put($('ch1-legend'), 
+      ...[['canon', 'same value, written differently'], ['strong', 'strong identifier'], ['bridge', 'bridge log, time-bounded'], ['reject', 'refused (shared value)'], ['relation', 'relationship']]
+        .map(([t, label]) => h('span', {}, (() => { const sv = s('svg', { viewBox: '0 0 26 8', 'aria-hidden': 'true' }); sv.append(s('path', { class: `g-edge ${t}`, d: 'M1 4 L25 4' })); return sv; })(), label)));
+    let lastLayout = null;
+    new ResizeObserver(() => { const L = ch1Layout(); if (L !== lastLayout) { lastLayout = L; renderCh1Graph(); } }).observe($('ch1-graph'));
+    renderCh1();
+
+    // =====================================================================
+    // Chapter 2: a feed you've never seen
+    // =====================================================================
+    const LINES = [
+      'ts=2026-10-20T09:16:44Z|a=10.20.4.17|b=192.0.2.80|who=jlee|n=ws-114|site=payroll.finance.example|rc=200|sz=5120|k=88412|act=ALLOW',
+      'ts=2026-10-20T09:17:02Z|a=10.20.6.31|b=198.51.100.7|who=pnair|n=ws-207|site=files.partner.example|rc=403|sz=318|k=88413|act=BLOCK',
+      'ts=2026-10-20T09:17:40Z|a=10.20.4.52|b=192.0.2.80|who=akim|n=ws-311|site=payroll.finance.example|rc=200|sz=4410|k=88414|act=ALLOW',
+      'ts=2026-10-20T09:18:05Z|a=10.20.9.8|b=203.0.113.99|who=svc-backup|n=srv-db02|site=updates.supplier.example|rc=200|sz=88120|k=88415|act=ALLOW',
+    ];
+    const parsed = LINES.map(l => Object.fromEntries(l.split('|').map(p => p.split('='))));
+    const MEANINGS = ['Event time', 'Source address', 'Destination address', 'User account', 'Source device name', 'Destination domain', 'Response code', 'Bytes sent', 'Action (allowed / blocked)', 'Keep as-is (unmapped)'];
+    // Clue scores out of 100 for the proposed meaning; null when a clue doesn't apply.
+    // fits: meanings whose values this field could plausibly hold.
+    const FIELDS = [
+      { f: 'ts', propose: 'Event time', name: 90, shape: 100, seen: null, fits: ['Event time'],
+        why: 'Every value is a full date and time.' },
+      { f: 'a', propose: 'Source address', name: 0, shape: 100, seen: 100, fits: ['Source address', 'Destination address'],
+        why: 'All 4 values are inside addresses held by known devices at that minute, and each line has a different one: the device that made the request.' },
+      { f: 'b', propose: 'Destination address', name: 0, shape: 100, seen: 50, fits: ['Source address', 'Destination address'],
+        why: 'All outside addresses, the same few for many devices. 2 of 4 also appear as destinations in firewall logs.' },
+      { f: 'who', propose: 'User account', name: 60, shape: 80, seen: 100, fits: ['User account'],
+        why: 'All 4 values are accounts in the people directory, including one service account.' },
+      { f: 'n', propose: 'Source device name', name: 30, shape: 70, seen: 100, fits: ['Source device name'],
+        why: 'All 4 values are device names you already hold, and each matches the device that held address a.' },
+      { f: 'site', propose: 'Destination domain', name: 40, shape: 100, seen: 75, fits: ['Destination domain'],
+        why: '3 of 4 domains were also looked up in DNS logs a moment earlier.' },
+      { f: 'rc', propose: 'Response code', name: 40, shape: 70, seen: null, fits: ['Response code', 'Bytes sent'],
+        why: 'Three-digit numbers between 100 and 599, like web response codes.' },
+      { f: 'sz', propose: 'Bytes sent', name: 50, shape: 40, seen: null, fits: ['Bytes sent', 'Response code'],
+        why: 'Whole numbers of very different sizes. Could be bytes sent or received.' },
+      { f: 'k', propose: 'Keep as-is (unmapped)', name: 0, shape: 0, seen: null, fits: ['Keep as-is (unmapped)', 'Bytes sent'],
+        why: 'A number that goes up by one on each line: probably the gateway\'s own record counter. Nothing to map it to, so it is kept under its own name.' },
+      { f: 'act', propose: 'Action (allowed / blocked)', name: 80, shape: 90, seen: null, fits: ['Action (allowed / blocked)'],
+        why: 'Only two values, ALLOW and BLOCK.' },
+    ];
+    // Weights for combining the clues (docs/assumptions.md §7b).
+    const CLUE_W = { name: 1, shape: 1.5, seen: 2.5 };
+    const AUTO_ACCEPT = 75, KEEP_BELOW = 40;
+    const confidence = fd => {
+      if (fd.propose.startsWith('Keep')) return null;
+      let sum = 0, wt = 0;
+      for (const k of ['name', 'shape', 'seen']) if (fd[k] != null) { sum += fd[k] * CLUE_W[k]; wt += CLUE_W[k]; }
+      return Math.round(sum / wt);
+    };
+    const chosen = Object.fromEntries(FIELDS.map(fd => [fd.f, fd.propose]));
+
+    put($('ch2-raw'), ...LINES.map(l => h('div', {}, l)));
+    put($('ch2-formats'), 
+      ...[['JSON', false], ['XML', false], ['Comma-separated', false], ['Syslog header', false], ['key=value pairs split by "|"', true]]
+        .map(([f, ok]) => h('span', { class: `tag ${ok ? 'good' : 'bad'}` }, ok ? '✓' : '✗', f)),
+      h('span', { class: 'small muted', style: 'width:100%' }, 'Result: 10 fields on every line, so the lines can be split. What the fields mean is still unknown.'));
+    $('ch2-rule').textContent = `Each clue is scored out of 100 and combined, with "seen before" counting most. At ${AUTO_ACCEPT} or more the meaning is used straight away and listed for review; from ${KEEP_BELOW} to ${AUTO_ACCEPT - 1}, a person checks it first; below ${KEEP_BELOW}, the field is kept under its own name.`;
+
+    function clueRow(label, v) {
+      return h('div', { class: 'sig' }, h('span', {}, label),
+        h('div', { class: `bar${v == null ? ' na' : ''}` }, h('i', { style: `width:${v ?? 0}%` })),
+        h('span', {}, v == null ? 'n/a' : String(v)));
+    }
+    function renderCh2() {
+      put($('ch2-fields'), ...FIELDS.map(fd => {
+        const conf = confidence(fd);
+        const pick = chosen[fd.f];
+        const changed = pick !== fd.propose;
+        const fits = fd.fits.includes(pick);
+        let pill;
+        if (changed) pill = h('span', { class: `tag ${fits ? 'amber' : 'bad'}` }, fits ? 'set by a person' : 'values don\'t fit');
+        else if (conf == null) pill = h('span', { class: 'tag' }, 'kept as-is');
+        else if (conf >= AUTO_ACCEPT) pill = h('span', { class: 'tag good' }, `${conf} · used now`);
+        else if (conf >= KEEP_BELOW) pill = h('span', { class: 'tag amber' }, `${conf} · person checks`);
+        else pill = h('span', { class: 'tag' }, `${conf} · kept as-is`);
+        const sel = h('select', { 'aria-label': `Meaning of field ${fd.f}`, onchange: e => { chosen[fd.f] = e.target.value; renderCh2(); } },
+          MEANINGS.map(m => h('option', { value: m, selected: m === pick }, m)));
+        return h('tr', {},
+          h('td', {}, fd.f),
+          h('td', {}, h('div', { class: 'vals' }, parsed.slice(0, 3).map(p => p[fd.f]).join(', ') + ' …')),
+          h('td', {}, clueRow('Name', fd.name), clueRow('Shape', fd.shape), clueRow('Seen before', fd.seen)),
+          h('td', {}, sel, h('div', { class: 'field-note muted' }, fd.why)),
+          h('td', {}, pill));
+      }));
+      renderCh2Result();
+    }
+
+    function renderCh2Result() {
+      const by = m => FIELDS.filter(fd => chosen[fd.f] === m).map(fd => fd.f);
+      const warnings = [];
+      const src = by('Source address'), dst = by('Destination address');
+      if (src.includes('b') && dst.includes('a')) warnings.push('Direction flipped: every line now says an outside server connected into your laptops. Detections that look for laptops reaching out would miss all of it.');
+      for (const fd of FIELDS) if (!fd.fits.includes(chosen[fd.f])) warnings.push(`Field ${fd.f} is mapped as "${chosen[fd.f]}", but its values don't look like that.`);
+      for (const m of MEANINGS) if (!m.startsWith('Keep') && by(m).length > 1) warnings.push(`Two fields (${by(m).join(', ')}) are both mapped as "${m}".`);
+
+      const devTied = (src.includes('a') || by('Source device name').includes('n')) ? 4 : 0;
+      const userTied = by('User account').includes('who') ? 4 : 0;
+      const kept = FIELDS.filter(fd => chosen[fd.f].startsWith('Keep')).map(fd => fd.f);
+      const review = FIELDS.filter(fd => chosen[fd.f] === fd.propose && confidence(fd) != null && confidence(fd) < AUTO_ACCEPT && confidence(fd) >= KEEP_BELOW).map(fd => fd.f);
+
+      const line = parsed[0];
+      const shown = FIELDS.filter(fd => !chosen[fd.f].startsWith('Keep')).map(fd => [chosen[fd.f], line[fd.f]]);
+      put($('ch2-result'), 
+        h('h3', {}, 'Step 4: the result'),
+        h('div', { class: 'stats' },
+          h('div', { class: 'stat' }, h('b', {}, `${devTied} of 4`), h('span', {}, 'lines tied to a known device')),
+          h('div', { class: 'stat' }, h('b', {}, `${userTied} of 4`), h('span', {}, 'lines tied to a known person')),
+          h('div', { class: 'stat' }, h('b', {}, String(review.length)), h('span', {}, 'meanings waiting for a person'))),
+        h('p', { class: 'small muted' }, 'The first line, in common field names:'),
+        h('dl', { class: 'kv' }, shown.map(([m, v]) => [h('dt', {}, m), h('dd', {}, v)]),
+          kept.length ? [h('dt', {}, 'Kept as-is'), h('dd', {}, kept.map(f => `${f}=${line[f]}`).join(', '))] : null),
+        review.length ? h('p', { class: 'small' }, `Waiting for a person: ${review.map(f => `${f} (${chosen[f]})`).join(', ')}. Until then, these are stored but not used to tie lines to entities.`) : null,
+        warnings.length ? h('div', { class: 'takeaway warn' }, h('b', {}, 'Check this mapping'), warnings.map(w => h('div', { class: 'small' }, w))) : h('div', { class: 'takeaway' }, h('b', {}, 'Nothing looks wrong.'), 'Try mapping field a as "Destination address" and b as "Source address" to see what a flipped direction does.'),
+      );
+    }
+    renderCh2();
+
+    // =====================================================================
+    // Chapter 3: seen it before, or new?
+    // =====================================================================
+    // Points for each kind of evidence (docs/assumptions.md §7b).
+    const W = {
+      agent: 100, mac: 60, email: 70, account: 50, host: 25, ipLease: 75, ipAny: 40,
+      nameExact: 15, emailLike: 20, mainUser: 15, conflictSilent: -40,
+    };
+    const WEIGHT_ROWS = [
+      ['Same sensor ID', W.agent, 'Unique to one sensor install. Enough on its own.'],
+      ['Same email / sign-in name', W.email, 'Unique per person, but can be renamed or shared as an alias.'],
+      ['Address inside an active lease', W.ipLease, 'Strong, but only for the minutes the lease or sensor report covers.'],
+      ['Same hardware address', W.mac, 'Mostly unique, but changes with a new network adapter or dock, and some devices randomize it.'],
+      ['Same account name', W.account, 'Unique within one directory.'],
+      ['Same address, no time check', W.ipAny, 'Only used when the time-window safeguard is off. Addresses are reused, so this points at everyone who ever had it.'],
+      ['Same device name', W.host, 'Names get reused when devices are replaced or reimaged.'],
+      ['Similar email address', W.emailLike, 'Same domain and the same name in another pattern (jordan.lee vs jlee).'],
+      ['Same display name', W.nameExact, 'Many people share a name.'],
+      ['Same main user', W.mainUser, 'Supporting evidence only.'],
+      ['Different sensor ID, old one silent', W.conflictSilent, 'Could be a reimage of the same laptop, or a new laptop with the old name. Two sensor IDs both reporting at once would rule out a match entirely.'],
+    ];
+    const KNOWN = [
+      { name: 'WS-114', type: 'dev', lines: ['Laptop · sensor 7f3a9c21 (silent since 11:02)', 'hardware 3c:22:fb:91:0a:7e', '10.20.4.17 leased 09:01–17:01', 'main user jlee'] },
+      { name: 'WS-207', type: 'dev', lines: ['Laptop · sensor 51be0d94', 'hardware 8a:41:07:c2:9e:13', '10.20.4.17 leased 17:20–01:20', 'main user pnair'] },
+      { name: 'Jordan Lee', type: 'per', lines: ['Person · E1042', 'account jlee', 'jlee@corp.example'] },
+      { name: 'Priya Nair', type: 'per', lines: ['Person · E1177', 'account pnair', 'pnair@corp.example'] },
+      { name: '203.0.113.10', type: 'shared', lines: ['The office\'s shared internet address', 'Used by about 600 devices', 'On the shared-values deny list'] },
+    ];
+    // Each case returns candidate entities with their evidence, for the current safeguard settings.
+    const CASES = [
+      { title: 'Sensor check-in, 09:14', sub: 'A known sensor ID', types: ['dev'],
+        raw: 'sensor 7f3a9c21 · device WS-114 · address 10.20.4.17 · 09:14',
+        cands: o => [{ name: 'WS-114', type: 'dev', ev: [
+          ['Same sensor ID 7f3a9c21', W.agent], ['Same device name WS-114', W.host],
+          o.time ? ['10.20.4.17 is inside this laptop\'s lease at 09:14', W.ipLease] : ['10.20.4.17 has been used by this laptop', W.ipAny]] }],
+        note: 'The easy case: a strong identifier decides it. The other clues just agree.' },
+      { title: 'Firewall, 09:14', sub: 'Only an address', types: ['dev'],
+        raw: 'firewall · allow src=10.20.4.17 dst=192.0.2.80 · 09:14',
+        cands: o => o.time
+          ? [{ name: 'WS-114', type: 'dev', ev: [['10.20.4.17 was leased to this laptop at 09:14', W.ipLease]] },
+             { name: 'WS-207', type: 'dev', ev: [['WS-207 only gets 10.20.4.17 from 17:20, so it doesn\'t count', 0]] }]
+          : [{ name: 'WS-114', type: 'dev', ev: [['10.20.4.17 has been used by this laptop', W.ipAny]] },
+             { name: 'WS-207', type: 'dev', ev: [['10.20.4.17 has been used by this laptop', W.ipAny]] }],
+        note: 'An address on its own is weak evidence. With the lease time it is strong, because only one device held it at that minute.' },
+      { title: 'Firewall, 19:30', sub: 'Same address, evening', types: ['dev'],
+        raw: 'firewall · allow src=10.20.4.17 dst=198.51.100.7 · 19:30',
+        cands: o => o.time
+          ? [{ name: 'WS-207', type: 'dev', ev: [['10.20.4.17 was leased to this laptop at 19:30', W.ipLease]] },
+             { name: 'WS-114', type: 'dev', ev: [['WS-114\'s lease on 10.20.4.17 ended at 17:01, so it doesn\'t count', 0]] }]
+          : [{ name: 'WS-114', type: 'dev', ev: [['10.20.4.17 has been used by this laptop', W.ipAny]] },
+             { name: 'WS-207', type: 'dev', ev: [['10.20.4.17 has been used by this laptop', W.ipAny]] }],
+        note: 'The same address now belongs to a different laptop. Without the time check, the evening\'s traffic could be blamed on Jordan\'s laptop.' },
+      { title: 'Sign-in from the office', sub: 'A sign-in name and a shared address', types: ['per', 'dev'],
+        raw: 'sign-in · user jlee@corp.example · app Payroll · from 203.0.113.10 · 09:14',
+        cands: o => [
+          { name: 'Jordan Lee', type: 'per', ev: [['Same sign-in name jlee@corp.example', W.email]] },
+          ...(o.shared ? [] : [
+            { name: 'WS-114', type: 'dev', ev: [['203.0.113.10 has been seen with this laptop', W.ipAny]] },
+            { name: 'WS-207', type: 'dev', ev: [['203.0.113.10 has been seen with this laptop', W.ipAny]] }]),
+        ],
+        empty: { dev: { kind: 'none', text: 'The only device clue is the shared office address, which is on the deny list. The sign-in is tied to Jordan, and to no device. That is the right answer.' } },
+        note: 'Switch off "Ignore shared values" to see the hairball: the shared address points at about 600 devices, and joining on it would chain them all together.' },
+      { title: 'New sensor reports as WS-114, 11:20', sub: 'Known name, new sensor ID', types: ['dev'],
+        raw: 'sensor 9d02e6aa (new) · device WS-114 · hardware 5e:91:3a:07:b4:2c · user jlee · 11:20',
+        cands: () => [{ name: 'WS-114', type: 'dev', ev: [
+          ['Same device name WS-114', W.host], ['Same main user jlee', W.mainUser],
+          ['Hardware address 5e:91:3a:07:b4:2c is new', 0],
+          ['Different sensor ID; the old one went silent at 11:02', W.conflictSilent]] }],
+        note: 'This could be a reimage (same laptop, new sensor) or a new laptop that got the old name. The platform can\'t tell, so it plays safe. Chapter 4 picks this up.' },
+      { title: 'New account in a business app', sub: 'A similar name and email', types: ['per'],
+        raw: 'app account · email jordan.lee@corp.example · display name "Jordan Lee"',
+        cands: () => [{ name: 'Jordan Lee', type: 'per', ev: [
+          ['Same display name "Jordan Lee"', W.nameExact], ['Similar email: jordan.lee vs jlee, same domain', W.emailLike]] }],
+        note: 'Fuzzy matches are where people earn their keep. Two people can share a name, so this goes to a person instead of being linked automatically.' },
+      { title: 'Unknown device on the network', sub: 'Nothing matches', types: ['dev'],
+        raw: 'DHCP · 10.20.7.40 to 00:1b:a9:4f:2a:10 (NPI4F2A1) · 10:05',
+        cands: () => [],
+        empty: { dev: { kind: 'new', text: 'No identifier matches anything you hold. A new entity is right: an unmanaged device, probably a printer, with no sensor on it.' } },
+        note: 'New entities aren\'t a failure. Here the new entity is a useful finding: a device nobody installed a sensor on.' },
+    ];
+    const ch3 = { i: 0, auto: 70, fresh: 35, time: true, shared: true };
+    const TIE_GAP = 10;
+
+    function decide(cands, type, c) {
+      const list = cands.filter(x => x.type === type).map(x => ({ ...x, score: clamp(x.ev.reduce((t, [, p]) => t + p, 0), 0, 100) }))
+        .sort((a, b) => b.score - a.score);
+      const [top, second] = list;
+      if (!top) return { kind: c.empty?.[type]?.kind || 'new', list, text: c.empty?.[type]?.text };
+      if (top.score < ch3.fresh) return { kind: 'new', list };
+      if (second && second.score >= ch3.fresh && top.score - second.score < TIE_GAP) return { kind: 'amb', list };
+      if (top.score >= ch3.auto) return { kind: 'link', list, top };
+      return { kind: 'review', list, top };
+    }
+    const TYPE_WORD = { dev: 'device', per: 'person' };
+
+    // Built once; the sliders keep each other apart without re-rendering, so dragging isn't interrupted.
+    function renderCh3Controls() {
+      const refs = {};
+      const sync = () => { for (const k of ['auto', 'fresh']) { refs[k].input.value = ch3[k]; refs[k].out.textContent = String(ch3[k]); } };
+      const slider = (label, key, min, max) => {
+        const out = h('b', {}, String(ch3[key]));
+        const input = h('input', { type: 'range', min, max, step: 5, value: ch3[key], 'aria-label': label, oninput: e => {
+          ch3[key] = Number(e.target.value);
+          if (key === 'auto' && ch3.fresh > ch3.auto - 5) ch3.fresh = Math.max(0, ch3.auto - 5);
+          if (key === 'fresh' && ch3.auto < ch3.fresh + 5) ch3.auto = Math.min(100, ch3.fresh + 5);
+          sync(); renderCh3Out();
+        } });
+        refs[key] = { out, input };
+        return h('label', { class: 'slider' }, h('div', {}, h('span', {}, label), out), input);
+      };
+      const sw = (key, label, note) => h('label', { class: 'switch' },
+        h('input', { type: 'checkbox', checked: ch3[key], onchange: e => { ch3[key] = e.target.checked; renderCh3Out(); } }),
+        h('span', {}, label, h('small', {}, note)));
+      put($('ch3-controls'), 
+        slider('Link automatically at', 'auto', 40, 100),
+        slider('Create a new entity below', 'fresh', 0, 95),
+        sw('time', 'Check time windows on addresses', 'An address only counts while the lease or sensor report says it belonged to that device.'),
+        sw('shared', 'Ignore shared values', 'Keep shared addresses, proxies and service accounts out of matching.'),
+      );
+    }
+
+    function renderCh3Out() {
+      put($('ch3-cases'), ...CASES.map((c, i) => h('button', {
+        class: 'case-btn', type: 'button', 'aria-pressed': String(i === ch3.i), onclick: () => { ch3.i = i; renderCh3Out(); },
+      }, h('span', { class: 'num' }, String(i + 1)), h('div', {}, h('b', {}, c.title), h('span', {}, c.sub)))));
+
+      const c = CASES[ch3.i];
+      const cands = c.cands(ch3);
+      const blocks = [h('div', {}, h('span', { class: 'eyebrow' }, `Record ${ch3.i + 1}`), h('div', { class: 'raw', style: 'margin-top:6px' }, c.raw))];
+      for (const type of c.types) {
+        const d = decide(cands, type, c);
+        for (const x of d.list) {
+          const color = x.score >= ch3.auto ? 'var(--stopped)' : x.score >= ch3.fresh ? 'var(--undetected)' : 'var(--calm)';
+          blocks.push(h('div', { class: 'cand' },
+            h('div', { class: 'cand-head' }, h('b', {}, `Candidate ${TYPE_WORD[type]}: ${x.name}`), h('span', { class: 'score' }, `${x.score}`, h('span', { class: 'small muted' }, ' / 100'))),
+            h('div', { class: 'meter', role: 'img', 'aria-label': `Score ${x.score} of 100` },
+              h('div', { class: 'fill', style: `width:${x.score}%;background:${color}` }),
+              h('div', { class: 'mark', style: `left:${ch3.fresh}%`, title: 'New entity below this' }),
+              h('div', { class: 'mark', style: `left:${ch3.auto}%`, title: 'Link automatically at this' })),
+            h('ul', { class: 'evidence' }, x.ev.map(([label, p]) => h('li', {},
+              h('span', { class: `pts ${p > 0 ? 'pos' : p < 0 ? 'neg' : 'zero'}` }, p > 0 ? `+${p}` : String(p)), h('span', {}, label)))),
+          ));
+        }
+        if (type === 'dev' && !ch3.shared && c.title.startsWith('Sign-in')) {
+          blocks.push(h('p', { class: 'small muted' }, '… and about 598 more devices that also used 203.0.113.10 today, each with the same score.'));
+        }
+        const word = TYPE_WORD[type];
+        let title, text, cls = d.kind;
+        if (d.kind === 'link') { title = `Linked to ${d.top.name}`; text = `Scored ${d.top.score}, at or above ${ch3.auto}: the record is added to this ${word} automatically.`; }
+        else if (d.kind === 'review') { title = `Ask a person: is this ${d.top.name}?`; text = `Scored ${d.top.score}: between ${ch3.fresh} and ${ch3.auto - 1}. The record is held as a likely match until someone confirms or rejects it.`; }
+        else if (d.kind === 'amb') { title = `Can't tell: ${d.list.filter(x => x.score >= ch3.fresh).length > 2 ? 'many' : 'two'} candidates score the same`; text = `No candidate is ${TIE_GAP} points ahead of the next, so linking would be a guess. ${!ch3.time || !ch3.shared ? 'A safeguard is off; switch it back on.' : 'It goes to a person.'}`; }
+        else if (d.kind === 'none') { title = `No ${word} to link`; text = d.text; }
+        else { title = `New ${word} created`; text = d.text || (d.list.length ? `The best candidate scored ${d.list[0].score}, below ${ch3.fresh}. The record starts a new ${word}. It can still be merged later.` : `Nothing matched. The record starts a new ${word}.`); }
+        blocks.push(h('div', { class: `decision ${cls}` }, h('b', {}, title), h('span', { class: 'small' }, text)));
+      }
+      blocks.push(h('p', { class: 'small muted' }, c.note));
+      put($('ch3-out'), ...blocks);
+    }
+
+    put($('ch3-known'), ...KNOWN.map(k => h('div', { class: 'rec' },
+      h('div', { class: 'rec-head' }, h('b', {}, k.name), h('span', { class: `tag ${k.type === 'dev' ? 'dev' : k.type === 'per' ? 'per' : 'amber'}` }, k.type === 'dev' ? 'device' : k.type === 'per' ? 'person' : 'shared')),
+      k.lines.map(l => h('div', {}, l)))));
+    put($('ch3-weights'), ...WEIGHT_ROWS.map(([e, p, why]) => h('tr', {}, h('td', {}, e), h('td', { style: 'font-weight:700' }, p > 0 ? `+${p}` : String(p)), h('td', { class: 'muted' }, why))));
+    renderCh3Controls();
+    renderCh3Out();
+
+    // =====================================================================
+    // Chapter 4: "that's the same one"
+    // =====================================================================
+    const RISK_PER_FAIL = 10, INVESTIGATE_AT = 50, RULE_COUNT = 5, RULE_WINDOW_MIN = 60;
+    const EVENTS = [
+      { t: '10:41', what: 'Failed sign-in as jlee', fail: true, from: 'old' },
+      { t: '10:47', what: 'Failed sign-in as jlee', fail: true, from: 'old' },
+      { t: '10:52', what: 'Failed sign-in as jlee', fail: true, from: 'old' },
+      { t: '11:02', what: 'Sensor 7f3a9c21 stops reporting (IT starts the reimage)', from: 'old' },
+      { t: '11:20', what: 'New sensor 9d02e6aa reports as WS-114', from: 'new' },
+      { t: '11:22', what: 'Failed sign-in as jlee', fail: true, from: 'new' },
+      { t: '11:25', what: 'Failed sign-in as jlee', fail: true, from: 'new' },
+      { t: '11:29', what: 'Failed sign-in as jlee', fail: true, from: 'new' },
+    ];
+    const fails = from => EVENTS.filter(e => e.fail && (!from || e.from === from)).length;
+    const FLOW = [
+      { title: 'Record the tag', body: 'The platform stores the analyst\'s decision as a "must-link" fact: who, when, why. It is the strongest evidence the platform has, and it is kept separate from what the matcher found, so it can be undone, and so the matcher can never quietly overrule it. The opposite tag, "cannot-link", splits a wrong match the same way.' },
+      { title: 'Merge, and keep the old ID as an alias', body: 'One entity survives: WS-114, the older one with the asset tag. E-0219 is not deleted. It becomes an alias that points to WS-114, so any case, report or link that mentions E-0219 still works.' },
+      { title: 'Re-file the history', body: '' },
+      { title: 'Recompute everything worked out per device', body: '' },
+      { title: 'Learn from the correction', body: 'Why did the matcher miss it? It had no way to know about the reimage. Two fixes: feed in the device-management system\'s reimage records as another bridge source, and send "old sensor goes silent, new one appears with the same name and main user within a day" to a person instead of creating a new device. Then look for the same pattern elsewhere.' },
+    ];
+    const ch4 = { step: -1, mode: 'search', backfilled: false, log: [] };
+
+    function filedUnder(e) {
+      if (e.from === 'old' || ch4.step < 2) return e.from === 'old' ? 'WS-114' : 'E-0219';
+      if (ch4.mode === 'search') return 'WS-114 (looked up at search time)';
+      return ch4.backfilled ? 'WS-114 (rewritten by the backfill)' : 'E-0219 as stored → WS-114 through the alias';
+    }
+
+    function renderCh4() {
+      const merged = ch4.step >= 1, recomputed = ch4.step >= 3;
+      const riskOld = recomputed ? fails() * RISK_PER_FAIL : fails('old') * RISK_PER_FAIL;
+      const riskNew = fails('new') * RISK_PER_FAIL;
+      const riskBar = r => h('div', { class: 'risk', role: 'img', 'aria-label': `Risk ${r} of 100; investigate at ${INVESTIGATE_AT}` },
+        h('i', { style: `width:${r}%;background:${r >= INVESTIGATE_AT ? 'var(--active)' : 'var(--undetected)'}` }), h('div', { class: 'line', style: `left:${INVESTIGATE_AT}%` }));
+      put($('ch4-entities'), 
+        h('div', { class: 'ent' },
+          h('h4', {}, 'WS-114', h('span', { class: 'tag dev' }, 'laptop')),
+          h('div', { class: 'row' }, h('span', {}, 'Asset tag'), h('span', {}, 'LT-0457')),
+          h('div', { class: 'row' }, h('span', {}, 'Sensor IDs'), h('span', {}, merged ? '7f3a9c21, 9d02e6aa' : '7f3a9c21 (silent)')),
+          h('div', { class: 'row' }, h('span', {}, 'Main user'), h('span', {}, 'Jordan Lee')),
+          h('div', { class: 'row' }, h('span', {}, 'Open case'), h('span', {}, recomputed ? 'C-311 (now includes C-318)' : 'C-311, low priority')),
+          h('div', { class: 'row' }, h('span', {}, 'Risk score'), h('span', {}, h('b', {}, String(riskOld)), ` / investigate at ${INVESTIGATE_AT}`)),
+          riskBar(riskOld)),
+        h('div', { class: `ent${merged ? ' alias' : ''}` },
+          h('h4', {}, 'E-0219', merged ? h('span', { class: 'tag' }, 'alias of WS-114') : h('span', { class: 'tag dev' }, 'new device')),
+          h('div', { class: 'row' }, h('span', {}, 'Device name'), h('span', {}, 'WS-114')),
+          h('div', { class: 'row' }, h('span', {}, 'Sensor ID'), h('span', {}, '9d02e6aa (since 11:20)')),
+          h('div', { class: 'row' }, h('span', {}, 'Main user'), h('span', {}, 'Jordan Lee')),
+          h('div', { class: 'row' }, h('span', {}, 'Open case'), h('span', {}, recomputed ? 'merged into C-311' : 'C-318, low priority')),
+          h('div', { class: 'row' }, h('span', {}, 'Risk score'), h('span', {}, recomputed ? '→ WS-114' : h('b', {}, String(riskNew)), recomputed ? '' : ` / investigate at ${INVESTIGATE_AT}`)),
+          recomputed ? null : riskBar(riskNew)),
+      );
+
+      put($('ch4-mode'), ...[['search', 'Names looked up at search time'], ['stored', 'Names added when stored']].map(([m, label]) =>
+        h('button', { type: 'button', 'aria-pressed': String(ch4.mode === m), onclick: () => { ch4.mode = m; renderCh4(); } }, label)));
+      $('ch4-mode-note').textContent = ch4.mode === 'search'
+        ? 'Events are stored with the raw sensor ID. The device they belong to is looked up from the entity table each time someone searches.'
+        : 'Each event is stored with the device it belonged to at the time. Searches are faster, but old events keep the old name until they are rewritten.';
+      put($('ch4-events'), ...EVENTS.map(e => h('tr', { class: e.fail ? '' : 'info' },
+        h('td', {}, e.t), h('td', {}, e.what), h('td', {}, filedUnder(e)))));
+
+      // Tag box.
+      put($('ch4-tag'), 
+        h('h3', { style: 'margin:0' }, 'Tag E-0219 as the same device as WS-114'),
+        h('span', { class: 'muted' }, 'Reason (kept with the tag)'),
+        h('input', { id: 'ch4-reason', type: 'text', value: ch4.reason ?? 'Reimaged by IT this morning, change ticket CHG-2291', disabled: ch4.step >= 0, 'aria-label': 'Reason for the tag' }),
+      );
+
+      // Flow.
+      const flowBody = i => {
+        if (i === 0) return FLOW[0].body;
+        if (i === 2) return ch4.mode === 'search'
+          ? 'Because names are looked up when you search, updating the entity table re-files all history at once. All six failed sign-ins now show under WS-114.'
+          : (ch4.backfilled
+            ? 'The backfill has rewritten the three events stored under E-0219. History now reads WS-114 everywhere.'
+            : 'The three events stored under E-0219 still carry that name. Searches reach them through the alias table until a backfill rewrites them.');
+        if (i === 3) return `Rules that count per device are re-run over the last 24 hours, through the alias table. The risk scores combine (${fails('old') * RISK_PER_FAIL} + ${fails('new') * RISK_PER_FAIL} = ${fails() * RISK_PER_FAIL}, past the investigate line at ${INVESTIGATE_AT}), and the two low-priority cases become one.`;
+        return FLOW[i].body;
+      };
+      put($('ch4-flow'), ...FLOW.map((f, i) => h('div', { class: `flow-step${i === ch4.step ? ' on' : i > ch4.step ? ' wait' : ''}` },
+        h('span', { class: 'num' }, String(i + 1)),
+        h('div', {}, h('b', {}, f.title), h('p', {}, flowBody(i)),
+          i === 0 && ch4.step >= 0 ? h('div', { class: 'raw', style: 'margin-top:8px' }, `must-link · E-0219 = WS-114 · by: analyst on duty · 11:47 · reason: "${ch4.reason}"`) : null,
+          i === 2 && ch4.step >= 2 && ch4.mode === 'stored' && !ch4.backfilled ? h('button', { class: 'btn', type: 'button', style: 'margin-top:8px', onclick: () => { ch4.backfilled = true; ch4.log.push('11:48 backfill: 3 events rewritten from E-0219 to WS-114'); renderCh4(); } }, 'Run the backfill') : null,
+          i === 3 && ch4.step >= 3 ? h('div', { class: 'alert-box', style: 'margin-top:8px' }, h('b', {}, 'New alert, raised now and dated 11:29: '), `${fails()} failed sign-ins on WS-114 between 10:41 and 11:29 (48 minutes). Rule: ${RULE_COUNT} or more within ${RULE_WINDOW_MIN} minutes. Split across two devices, neither side reached ${RULE_COUNT}.`) : null,
+          i === 4 && ch4.step >= 4 ? h('div', { style: 'margin-top:8px;display:grid;gap:6px' },
+            h('span', { class: 'small' }, h('b', {}, 'New rule for the matcher: '), 'old sensor silent + new sensor with the same name and main user within 24 hours → ask a person.'),
+            h('span', { class: 'small' }, h('b', {}, 'Same pattern found, sent for review: '), 'WS-311 and E-0231 (old sensor silent 09:12, new one 09:40); SRV-DB02 and E-0240 (silent 07:58, new 08:05).')) : null,
+        ))));
+
+      const last = ch4.step === FLOW.length - 1;
+      put($('ch4-nav'), 
+        ch4.step < 0
+          ? h('button', { class: 'btn primary', type: 'button', onclick: () => {
+              ch4.reason = $('ch4-reason').value.trim() || 'No reason given';
+              ch4.step = 0; ch4.log.push(`11:47 tag: must-link E-0219 = WS-114 ("${ch4.reason}")`); renderCh4();
+            } }, 'Tag as the same device')
+          : h('button', { class: 'btn primary', type: 'button', disabled: last, onclick: () => { ch4.step++; renderCh4(); } }, last ? 'All steps done' : 'Next step →'),
+        ch4.step >= 0 ? h('button', { class: 'btn', type: 'button', onclick: () => {
+          ch4.log.push('11:52 tag undone: E-0219 and WS-114 split again; both decisions stay on record');
+          ch4.step = -1; ch4.backfilled = false; renderCh4();
+        } }, 'Undo the tag') : null,
+      );
+      put($('ch4-log'), ...(ch4.log.length ? [h('span', { class: 'eyebrow', style: 'font-family:var(--font)' }, 'Decision record')] : []), ...ch4.log.map(l => h('div', {}, l)));
+    }
+    renderCh4();
+  </script>
+</body>
+</html>

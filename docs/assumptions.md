@@ -144,6 +144,49 @@ Latency is identical for humans and agents. The difference the simulator shows i
 | **Business impact** | Whether the attacker's objective (e.g. fraudulent payment request sent) occurred before containment |
 | **Monthly data cost** | Formula in §3 |
 
+## 7b. Entity Resolution Lab (`entities.html`)
+
+The lab is a separate page and doesn't feed the simulator's engine. Its figures live in the page's script; keep them in step with this table. All are illustrative. See [entity-resolution.md](entity-resolution.md) for the concepts.
+
+**Field-meaning clues (chapter 2).** Each clue is scored 0–100 for the proposed meaning, then combined as a weighted average of the clues that apply.
+
+| Parameter | Value | Source |
+|---|---|---|
+| Weight of the "name" clue | 1 | Illustrative |
+| Weight of the "shape" clue | 1.5 | Illustrative |
+| Weight of the "seen before" clue | 2.5 | Illustrative; the strongest clue |
+| Use the meaning straight away at | 75 or more | Illustrative |
+| A person checks first | 40–74 | Illustrative |
+| Keep the field under its own name below | 40 | Illustrative |
+
+**Matching points (chapter 3).** Points for one candidate are added up and capped at 0–100.
+
+| Evidence | Points | Source |
+|---|---|---|
+| Same sensor ID | +100 | Illustrative |
+| Address inside an active lease or sensor report | +75 | Illustrative |
+| Same email / sign-in name | +70 | Illustrative |
+| Same hardware address | +60 | Illustrative |
+| Same account name | +50 | Illustrative |
+| Same address, no time check (safeguard off) | +40 | Illustrative |
+| Same device name | +25 | Illustrative |
+| Similar email address | +20 | Illustrative |
+| Same display name | +15 | Illustrative |
+| Same main user | +15 | Illustrative |
+| Different sensor ID, old one silent | −40 | Illustrative |
+| Link automatically at (slider) | 70 (40–100) | Illustrative |
+| Create a new entity below (slider) | 35 (0–95) | Illustrative |
+| Too close to call: top two candidates within | 10 points | Illustrative |
+| Devices behind the office's shared address | about 600 | Illustrative (scenario) |
+
+**After a merge (chapter 4).**
+
+| Parameter | Value | Source |
+|---|---|---|
+| Risk added per failed sign-in | 10 | Illustrative |
+| Risk score that opens an investigation | 50 | Illustrative |
+| Counting rule | 5 failed sign-ins on one device within 60 minutes | Illustrative |
+
 ## 8. Open items
 
 - [x] Storage and query prices checked against public list prices (October 2026); see §9. Re-check yearly.
