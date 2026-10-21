@@ -36,6 +36,38 @@ Two kinds of identifier, and the difference matters more than anything else on t
 
 ## 2. Logs in a format you've never seen
 
+### Where it happens: the ingest pipeline
+
+Before any field can be worked out, the platform has to hold on to data it can't read yet, without losing it, and without letting it mislead detections. A typical pipeline has two paths:
+
+```
+Known format:
+  Collect → Land → Match a parser ─(parser found)→ Parse → Normalize → Enrich → Store & detect
+                        │                            │
+                   (no parser)                 (can't parse)
+  ┌─────────────────────┴────────────────────────────┘
+  ▼
+Unknown format:
+  Fingerprint → Staging → Propose mapping → Shadow test → Approve → Replay ─(re-run)→ Match a parser
+```
+
+| Stage | What happens | Why it's built this way |
+|---|---|---|
+| **Collect** | Agents, syslog listeners, API pollers and HTTPS endpoints receive lines and wrap each in an envelope: arrival time, connection, declared log type. The line itself is unchanged. | The connection is the most reliable clue to a format, so each source gets its own. |
+| **Land** | The line is written to a durable queue and a raw archive before any parsing. | Write before you parse: a missing or broken parser loses nothing, and any later stage can be replayed. |
+| **Match a parser** | By the connection's declared type, then by matching the line's shape against templates each parser accepts. | Matching on shape catches format drift, and two kinds of log on one connection. |
+| **Parse → Normalize → Enrich → Store** | A versioned parser splits the line; fields get common names; entities are resolved; the event is routed to searchable or cheap storage. | Failures are counted per parser: a rising rate is the early warning of drift. |
+| **Fingerprint** | Finds the format and where each event ends, then masks values to get a template, the line's shape. Lines are grouped by template. | You map a few shapes, not millions of lines. A new template on a known connection signals drift. |
+| **Staging** | Lines are kept with their envelope, template and raw keys and values. They are searchable as text and swept for known-bad values, but don't feed entity linking or detection rules. The arrival time stands in for the event time, marked as such. | Unknown is neither dropped nor trusted. Staging has its own retention and tighter access: unknown data can hold secrets. |
+| **Propose mapping** | Field clues are scored (below), and an AI assistant may draft the parser. The output is a candidate, not live. | The assistant treats log text as data, never as instructions. |
+| **Shadow test** | The candidate runs on the staged lines, and its output is checked but not used: parse rate, required fields, types, entity match rate, direction. A new version must also read old lines exactly as before. | Test on the real sample, where the odd cases are. |
+| **Approve** | A person approves; the parser is registered with a version, an owner and the templates it accepts. | Parsers are code: owned, versioned, and possible to roll back. |
+| **Replay** | Staged lines go back through "Match a parser". Each keeps its connection and queue position, so none is stored twice. Event times are corrected. | Late detections then carry the right time. |
+
+**Format drift is the common case.** A firmware update that adds a field to a firewall's lines happens far more often than a brand-new source, and it is quieter: data keeps arriving, it just stops making sense. The parse-failure rate is how you notice.
+
+### Working out what the fields mean
+
 The process runs from cheap and certain to expensive and uncertain:
 
 1. **Find the format.** Try JSON, XML, comma-separated, syslog, CEF-style and key=value, and pick the one that splits every line the same way.

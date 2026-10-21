@@ -217,6 +217,38 @@
     .kv dt { color: var(--muted); }
     .kv dd { margin: 0; font-family: var(--mono); font-size: 0.82rem; overflow-wrap: anywhere; }
 
+    /* ---------- chapter 2: ingest pipeline ---------- */
+    .pipe { display: grid; gap: 14px; }
+    #pipe-graph svg { width: 100%; height: auto; display: block; }
+    .p-node { cursor: pointer; }
+    .p-node rect.box { fill: var(--surface); stroke: var(--line); stroke-width: 1.5; transition: fill .25s, stroke .25s; }
+    .p-node.unknown rect.box { stroke: var(--undetected); stroke-dasharray: 5 3; }
+    .p-node.visited rect.box { fill: var(--a-soft); stroke: var(--a); stroke-dasharray: none; stroke-width: 2; }
+    .p-node.current rect.box { fill: var(--a); stroke: var(--a); stroke-dasharray: none; }
+    .p-node:hover rect.box { stroke: var(--a); }
+    .p-node:focus { outline: none; }
+    .p-node:focus-visible rect.box { stroke: var(--focus); stroke-width: 3; }
+    .p-node .t { font-size: 12.5px; font-weight: 700; fill: var(--ink); }
+    .p-node .s { font-size: 10.5px; fill: var(--muted); }
+    .p-node.current .t, .p-node.current .s { fill: var(--on-accent); }
+    .p-badge rect { fill: var(--undetected); }
+    .p-badge text { font-size: 9.5px; font-weight: 700; fill: var(--on-accent); }
+    .p-edge { fill: none; stroke: var(--muted); stroke-width: 1.4; opacity: 0.55; }
+    .p-edge.on { stroke: var(--a); stroke-width: 2.6; opacity: 1; }
+    .p-edge-label { font-size: 10px; fill: var(--muted); paint-order: stroke; stroke: var(--surface); stroke-width: 4px; stroke-linejoin: round; }
+    .p-edge-label.on { fill: var(--a); font-weight: 700; }
+    .pipe-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; border-top: 1px solid var(--line); padding-top: 14px; }
+    @media (max-width: 860px) { .pipe-panel { grid-template-columns: 1fr; } }
+    .pipe-panel h4 { margin: 0; font-size: 1.05rem; }
+    .pipe-panel .col { display: grid; gap: 10px; align-content: start; min-width: 0; }
+    .line-at { font-family: var(--mono); font-size: 0.78rem; background: var(--soft); border-radius: 8px; padding: 10px 12px; white-space: pre; overflow-x: auto; line-height: 1.55; }
+    .expert { font-size: 0.86rem; border-left: 3px solid var(--agent); background: var(--agent-soft); border-radius: 6px; padding: 8px 12px; }
+    .expert b { color: var(--agent); }
+    .rules { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+    .rules div { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 3px; align-content: start; }
+    .rules b { font-size: 0.92rem; }
+    .rules span { font-size: 0.84rem; color: var(--muted); }
+
     /* ---------- chapter 3: matcher ---------- */
     .ch3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 16px; align-items: start; }
     @media (max-width: 900px) { .ch3 { grid-template-columns: 1fr; } }
@@ -347,17 +379,34 @@
       <section class="chapter" id="ch2" aria-labelledby="ch2-title">
         <div class="chapter-head">
           <h2 id="ch2-title"><span class="num">2</span>A feed you've never seen</h2>
-          <p>A new web gateway starts sending logs, in a format nobody has written a parser for, with field names like <code>a</code>, <code>n</code> and <code>who</code>. Some of its values look a lot like things you already know. Here is how a platform works out what each field means, and why a person approves the result.</p>
+          <p>A new web gateway starts sending logs, in a format nobody has written a parser for, with field names like <code>a</code>, <code>n</code> and <code>who</code>. Some of its values look a lot like things you already know. First, where this happens in the platform; then how it works out what each field means, and why a person approves the result.</p>
+        </div>
+        <div class="card pipe" id="pipe">
+          <div class="nav-row" style="justify-content:space-between">
+            <h3 style="margin:0">The ingest pipeline: keep everything, trust only what you understand</h3>
+          </div>
+          <p class="small muted">The platform has to hold on to data it can't read yet, without losing it and without letting it mislead detections. Pick a line and follow it, stage by stage. You can also click any stage.</p>
+          <div class="nav-row">
+            <span class="small muted">Follow:</span>
+            <div class="seg" id="pipe-scen" role="group" aria-label="Which line to follow"></div>
+          </div>
+          <div id="pipe-graph" role="img" aria-label="Ingest pipeline: a known-format path and an unknown-format path that stages lines until a parser is approved, then replays them"></div>
+          <div class="legend" id="pipe-legend"></div>
+          <div class="pipe-panel" id="pipe-panel" aria-live="polite"></div>
+        </div>
+        <div class="card" style="display:grid;gap:12px">
+          <h3 style="margin:0">Design rules behind this pipeline</h3>
+          <div class="rules" id="pipe-rules"></div>
         </div>
         <div class="grid-2">
           <div class="card" style="display:grid;gap:12px">
-            <h3>Step 1: what kind of text is this?</h3>
+            <h3>Step 1 · Fingerprint: what kind of text is this?</h3>
             <div class="raw" id="ch2-raw"></div>
             <p class="small muted">The platform tries each format it knows, and picks the one that splits every line the same way.</p>
             <div class="format-list" id="ch2-formats"></div>
           </div>
           <div class="card" style="display:grid;gap:10px">
-            <h3>Step 2: three clues for each field</h3>
+            <h3>Step 2 · Propose: three clues for each field</h3>
             <dl class="kv">
               <dt>Name</dt><dd style="font-family:var(--font);font-size:0.86rem">Does the field name look like names other sources use for this meaning? (<code>src_ip</code>, <code>client</code>, <code>cip</code> …)</dd>
               <dt>Shape</dt><dd style="font-family:var(--font);font-size:0.86rem">Do the values look like this kind of value: an address, a domain, a time, an account?</dd>
@@ -367,7 +416,7 @@
           </div>
         </div>
         <div class="card" style="display:grid;gap:12px">
-          <h3>Step 3: proposed meanings. Change any of them.</h3>
+          <h3>Step 3 · Propose: the meanings. Change any of them.</h3>
           <div class="table-scroll">
             <table class="fields">
               <thead><tr><th>Field</th><th>Sample values</th><th>Clues</th><th>Meaning</th><th>Confidence</th></tr></thead>
@@ -808,6 +857,9 @@
     // Weights for combining the clues (docs/assumptions.md §7b).
     const CLUE_W = { name: 1, shape: 1.5, seen: 2.5 };
     const AUTO_ACCEPT = 75, KEEP_BELOW = 40;
+    // Ingest pipeline figures (docs/assumptions.md §7b).
+    const STAGING_DAYS = 14, PASS_PARSED = 99, PASS_REQUIRED = 95;
+    const STAGED_LINES = 48210, DRIFT_LINES = 9870, DRIFT_FAIL_PCT = 31, BASE_FAIL_PCT = 0.02;
     const confidence = fd => {
       if (fd.propose.startsWith('Keep')) return null;
       let sum = 0, wt = 0;
@@ -868,7 +920,7 @@
       const line = parsed[0];
       const shown = FIELDS.filter(fd => !chosen[fd.f].startsWith('Keep')).map(fd => [chosen[fd.f], line[fd.f]]);
       put($('ch2-result'), 
-        h('h3', {}, 'Step 4: the result'),
+        h('h3', {}, 'Step 4 · Shadow test: the result'),
         h('div', { class: 'stats' },
           h('div', { class: 'stat' }, h('b', {}, `${devTied} of 4`), h('span', {}, 'lines tied to a known device')),
           h('div', { class: 'stat' }, h('b', {}, `${userTied} of 4`), h('span', {}, 'lines tied to a known person')),
@@ -881,6 +933,247 @@
       );
     }
     renderCh2();
+
+    // ---------------- chapter 2: the ingest pipeline ----------------
+    // Stages. unknown: on the path for data without a parser. step: the chapter's step card it explains.
+    const STAGES = {
+      sources: { t: 'Sources', s: 'every system',
+        what: 'Every system that writes logs. A first-party sensor sends a format the platform itself defines. Third-party systems (firewalls, gateways, business apps) send whatever their maker chose, and makers change it in software updates.' },
+      collect: { t: 'Collect', s: 'agents, syslog, APIs',
+        what: 'Collectors receive or fetch logs: an agent on a server, a syslog listener, an API poller, an HTTPS endpoint. Each line is wrapped in an envelope that records when it arrived, which connection it came in on, and the log type that connection declares, if any. The line itself is not changed.',
+        expert: 'The connection is the most reliable clue to a format. Give each source its own connection instead of sending everything to one shared listener; otherwise the platform has to guess from the text alone.' },
+      land: { t: 'Land', s: 'queue + raw archive',
+        what: 'Before anything tries to understand it, the line is written to a durable queue and to a raw archive in cheap object storage. The queue absorbs bursts and lets any later stage be re-run from a known position. The archive keeps the original bytes.',
+        expert: 'Write before you parse. If a parser is wrong, crashes or doesn\'t exist yet, nothing is lost: every later stage can be replayed from here.' },
+      router: { t: 'Match a parser', s: 'by source and shape',
+        what: 'Looks for a parser that can read the line: first by the connection\'s declared type, then by matching the line\'s shape against the templates each parser is known to accept.',
+        expert: 'Matching on shape as well as connection catches a source whose format changed, and two kinds of log sharing one connection.' },
+      parse: { t: 'Parse', s: 'versioned parser',
+        what: 'The registered parser, a versioned piece of code, splits the line into named fields. Lines it can\'t read are not dropped: they go to fingerprinting and staging, and every failure is counted.',
+        expert: 'A parse-failure rate per parser is the best early warning that a source changed its format. A jump pages the parser\'s owner.' },
+      normalize: { t: 'Normalize', s: 'common field names',
+        what: 'Field names become the common schema: src becomes source address, ComputerName becomes device name. Values are canonicalized: lower-case names, one format for hardware addresses, one time zone.' },
+      enrich: { t: 'Enrich', s: 'entities + context',
+        what: 'Entity resolution happens here (chapters 1 and 3): addresses are tied to devices through leases and sensor reports, accounts to people. Context is added from the asset inventory and the people directory.' },
+      store: { t: 'Store & detect', s: 'hot, cheap, rules',
+        what: 'Each event is routed to the searchable tier where real-time detection rules run, or to cheaper storage. The simulator\'s "Inside the pipeline" view follows this part in detail.' },
+      replay: { t: 'Replay', s: 'staged → new parser', unknown: true,
+        what: 'Staged lines are sent back through "Match a parser", which now finds the new one. Each line carries its connection and queue position, so a line replayed twice is still stored once. Event times are corrected from the newly mapped time field.',
+        expert: 'Replay is why landing raw data first matters: the gap between "the data arrived" and "we understood it" closes without losing a line.' },
+      fingerprint: { t: 'Fingerprint', s: 'format + template', unknown: true, step: '1',
+        what: 'Works out how to split the line (JSON, XML, comma-separated, syslog, key=value) and where one event ends, for logs that run over several lines. Then it masks the values to get a template: the line\'s shape with the variable parts replaced. Lines with the same template are grouped, so a million lines become a handful of shapes to work out.',
+        expert: 'Template mining is what makes unknown data manageable: you map a few shapes, not millions of lines. A new template on a known connection is also how format drift is spotted.' },
+      staging: { t: 'Staging', s: 'kept, not trusted', unknown: true,
+        what: 'Lines without a parser are kept in a staging tier, with their envelope, their template and every key and value pulled out as-is. They can be searched as text and are swept for known-bad addresses, domains and file hashes. They don\'t feed entity linking or detection rules yet. Until the time field is known, the arrival time stands in for the event time, and is marked as such.',
+        expert: `Unknown means neither dropped nor trusted. Staging has its own retention (${STAGING_DAYS} days here) and tighter access, because unknown data can hold secrets nobody expected in a log.` },
+      propose: { t: 'Propose mapping', s: 'clues + AI draft', unknown: true, step: '2–3',
+        what: 'For each template, the field clues in Steps 2 and 3 below are scored, and an AI assistant can draft the parser from sample lines. The result is a candidate parser, not a live one.',
+        expert: 'The assistant reads text from systems outsiders can write to, so it gets the lines as data to describe, never as instructions, and its output is tested like anyone else\'s.' },
+      validate: { t: 'Shadow test', s: 'run on staged lines', unknown: true, step: '4',
+        what: 'The candidate runs in shadow on the staged lines: its output is checked but not used. The checks: how many lines it parses, whether required fields are filled, whether values fit their types, how many lines tie to known entities, and whether source and destination point the right way.',
+        expert: 'Test on the real staged sample, not on a few hand-picked lines. That is where the odd cases are: an empty field, a second time format, an address in a field that usually holds a name.' },
+      approve: { t: 'Approve', s: 'a person signs off', unknown: true,
+        what: 'A person reviews the shadow results and the mapping, then approves. The parser is registered with a version, an owner and the templates it accepts, and can be rolled back to the previous version.' },
+    };
+    const PIPE_EDGES = [
+      ['sources', 'collect'], ['collect', 'land'], ['land', 'router'],
+      ['router', 'parse', 'parser found'], ['parse', 'normalize'], ['normalize', 'enrich'], ['enrich', 'store'],
+      ['router', 'fingerprint', 'no parser'], ['parse', 'fingerprint', 'can\'t parse'],
+      ['fingerprint', 'staging'], ['staging', 'propose'], ['propose', 'validate'], ['validate', 'approve'],
+      ['approve', 'replay', 'approved parser'], ['replay', 'router', 're-run'],
+    ];
+    const PIPE_LAYOUT = {
+      wide: {
+        w: 1040, h: 300, nw: 118, nh: 48,
+        pos: {
+          sources: [64, 46], collect: [194, 46], land: [324, 46], router: [454, 46], parse: [584, 46], normalize: [714, 46], enrich: [844, 46], store: [974, 46],
+          replay: [324, 210], fingerprint: [454, 210], staging: [584, 210], propose: [714, 210], validate: [844, 210], approve: [974, 210],
+        },
+        // The loop from Approve back to Replay runs under the bottom row.
+        loop: (a, b) => `M${a[0]} ${a[1] + 24} V 280 H ${b[0]} V ${b[1] + 24}`,
+        // Edge labels: [x, y, anchor].
+        labels: { 'router>parse': [519, 14, 'middle'], 'router>fingerprint': [461, 120, 'start'], 'parse>fingerprint': [552, 120, 'start'],
+                  'approve>replay': [649, 293, 'middle'], 'replay>router': [372, 132, 'end'] },
+      },
+      narrow: {
+        w: 360, h: 730, nw: 150, nh: 46,
+        pos: {
+          sources: [95, 40], collect: [95, 115], land: [95, 190], router: [95, 265], parse: [95, 365], normalize: [95, 440], enrich: [95, 515], store: [95, 590],
+          replay: [265, 265], fingerprint: [265, 365], staging: [265, 440], propose: [265, 515], validate: [265, 590], approve: [265, 665],
+        },
+        loop: (a, b) => `M${a[0] + 75} ${a[1]} H 352 V ${b[1]} H ${b[0] + 75}`,
+        labels: { 'router>parse': [101, 318, 'start'], 'router>fingerprint': [196, 312, 'middle'], 'parse>fingerprint': [180, 405, 'middle'],
+                  'approve>replay': [344, 712, 'end'], 'replay>router': [180, 236, 'middle'] },
+      },
+    };
+
+    // Lines to follow. Each step: [stage, what the line looks like there, optional note for this line].
+    const PIPE_SCENARIOS = [
+      { id: 'known', label: 'A known firewall', steps: [
+        ['sources', '09:14:03 allow src=10.20.4.17 dst=192.0.2.80 dpt=443 xlate=203.0.113.10'],
+        ['collect', 'received:   2026-10-20T09:14:03.412Z\nconnection: fw-edge-01 (syslog over TLS)\ndeclared:   firewall\nraw:        "09:14:03 allow src=10.20.4.17 …"'],
+        ['land', 'queue:   ingest-raw · partition 3 · position 88104551\narchive: raw/2026-10-20/fw-edge-01/0914.gz\nthe original bytes, unchanged'],
+        ['router', 'connection fw-edge-01 → firewall parser v14\nshape matches template T-21b0, which v14 accepts\n→ parse'],
+        ['parse', 'time=09:14:03  action=allow  src=10.20.4.17\ndst=192.0.2.80  dpt=443  xlate=203.0.113.10\nparser: firewall v14'],
+        ['normalize', 'event time            2026-10-20T09:14:03Z\naction                allowed\nsource address        10.20.4.17\ndestination address   192.0.2.80\ndestination port      443\nshared outside address 203.0.113.10'],
+        ['enrich', 'source device   WS-114 (10.20.4.17 leased 09:01–17:01)\nsource user     Jordan Lee (signed in on WS-114)\n203.0.113.10    shared address: not used to link'],
+        ['store', 'tier:  searchable (firewall logs feed real-time rules)\nrules: checked as it arrives; none matched', 'The everyday path. Most lines take it, and it never waits for a person.'],
+      ] },
+      { id: 'new', label: 'The new gateway', steps: [
+        ['sources', LINES[0]],
+        ['collect', 'received:   2026-10-20T09:16:45.087Z\nconnection: gw-new-01 (HTTPS push)\ndeclared:   (none)\nraw:        "ts=2026-10-20T09:16:44Z|a=10.20.4.17|…"'],
+        ['land', 'queue:   ingest-raw · partition 5 · position 2301778\narchive: raw/2026-10-20/gw-new-01/0916.gz\nthe original bytes, unchanged'],
+        ['router', 'connection gw-new-01 → no parser registered\nshape matches no known template\n→ fingerprint and stage'],
+        ['fingerprint', 'format:   key=value, pairs split by "|", one line per event\ntemplate: T-4f1c\n  ts=<TIME>|a=<IP>|b=<IP>|who=<WORD>|n=<HOST>|\n  site=<DOMAIN>|rc=<NUM>|sz=<NUM>|k=<NUM>|act=<WORD>', 'This is Step 1 below, applied to every line as it arrives.'],
+        ['staging', 'template:    T-4f1c\nevent time:  not known yet; using arrival 09:16:45 (marked)\nas-is:       ts a b who n site rc sz k act\nswept:       10.20.4.17, 192.0.2.80, payroll.finance.example\n             → none on the known-bad lists\nnot yet used for entity linking or detection rules'],
+        ['propose', 'candidate parser gw-new v1 (draft, not live)\n  ts → event time       a → source address\n  b → destination addr  who → user account\n  n → source device     site → destination domain\n  act → action          rc, sz → waiting for a person\n  k → kept as-is', 'Steps 2 and 3 below show the clues and let you change the mapping.'],
+        ['validate', `shadow run on ${STAGED_LINES.toLocaleString('en-US')} staged lines (template T-4f1c)\n  parsed                  100%   (needs ${PASS_PARSED}%)\n  required fields filled  100%   (needs ${PASS_REQUIRED}%)\n  tied to known devices    97%\n  tied to known people     99%\n  direction check         passed: sources inside, destinations outside`],
+        ['approve', 'approved by: platform engineer on duty\nregistered:  parser gw-new v1\n  accepts:   connection gw-new-01, template T-4f1c\n  owner:     network team\n  rollback:  back to "no parser" (lines are staged again)'],
+        ['replay', `replaying ${STAGED_LINES.toLocaleString('en-US')} staged lines through "Match a parser"\nkey: connection + queue position, so no line is stored twice\nevent times corrected from field ts`],
+        ['router', 'connection gw-new-01, template T-4f1c → gw-new parser v1\n→ parse'],
+        ['parse', 'ts=2026-10-20T09:16:44Z  a=10.20.4.17  b=192.0.2.80\nwho=jlee  n=ws-114  site=payroll.finance.example\nrc=200  sz=5120  k=88412  act=ALLOW\nparser: gw-new v1'],
+        ['normalize', 'event time            2026-10-20T09:16:44Z\nsource address        10.20.4.17\nsource device name    ws-114\nuser account          jlee\ndestination address   192.0.2.80\ndestination domain    payroll.finance.example\naction                allowed\nk                     88412 (kept as-is)'],
+        ['enrich', 'source device   WS-114 (lease and device name agree)\nuser            Jordan Lee\ndestination     payroll.finance.example, looked up in DNS 2 s earlier'],
+        ['store', `tier:  searchable\nweb gateway rules now run on new lines, and on the\n${STAGED_LINES.toLocaleString('en-US')} replayed ones, with their real event times`, 'Rules that run on replayed lines can raise alerts late, dated when the event happened.'],
+      ] },
+      { id: 'drift', label: 'A firewall after an update', steps: [
+        ['sources', '09:31:10 v2 allow rule=114 src=10.20.6.31 dst=198.51.100.7 dpt=443 xlate=203.0.113.10', 'Some of the firewalls got a software update overnight. Their lines gained two new parts: a format version and a rule number.'],
+        ['collect', 'received:   2026-10-20T09:31:10.220Z\nconnection: fw-edge-01 (syslog over TLS)\ndeclared:   firewall'],
+        ['land', 'queue:   ingest-raw · partition 3 · position 88391027\narchive: raw/2026-10-20/fw-edge-01/0931.gz'],
+        ['router', 'connection fw-edge-01 → firewall parser v14\n→ parse'],
+        ['parse', `firewall v14 can't read this line\n  expects: <time> <action> src=… dst=…\n  found:   <time> v2 <action> rule=… src=… dst=…\nfailures on fw-edge-01: ${DRIFT_FAIL_PCT}% of lines in 10 minutes\n  (normally ${BASE_FAIL_PCT}%) → the owner is paged`, 'Format drift in sources you already have is more common than brand-new sources, and quieter: the data keeps arriving, it just stops making sense.'],
+        ['fingerprint', 'template T-9a07\n  <TIME> v2 <WORD> rule=<NUM> src=<IP> dst=<IP> dpt=<NUM> xlate=<IP>\nnearest known: T-21b0 (accepted by v14)\n  differs by 2 parts: "v2" and rule=<NUM>'],
+        ['staging', `failed lines kept, with template T-9a07\nthe known-bad sweep still runs on them\nthe other ${100 - DRIFT_FAIL_PCT}% of firewall lines still parse normally`],
+        ['propose', 'candidate firewall v15 = v14 + 2 changes\n  "v2"        → log format version (kept as-is)\n  rule=<NUM>  → firewall rule ID (new field)'],
+        ['validate', `shadow run of v15 on old and new lines\n  old template T-21b0: 100% parsed, same output as v14\n  new template T-9a07: 100% parsed\n  required fields filled 100%   (needs ${PASS_REQUIRED}%)`, 'The shadow test also checks that the new version still reads the old lines exactly as before.'],
+        ['approve', 'approved by: network team (the parser\'s owner)\nfirewall v15 replaces v14; v14 is kept for rollback'],
+        ['replay', `replaying ${DRIFT_LINES.toLocaleString('en-US')} failed lines through v15\nkey: connection + queue position, so no line is stored twice`],
+        ['router', 'connection fw-edge-01 → firewall parser v15\n→ parse'],
+        ['parse', 'time=09:31:10  version=v2  action=allow  rule=114\nsrc=10.20.6.31  dst=198.51.100.7  dpt=443\nxlate=203.0.113.10\nparser: firewall v15'],
+        ['normalize', 'event time            2026-10-20T09:31:10Z\naction                allowed\nfirewall rule ID      114\nsource address        10.20.6.31\ndestination address   198.51.100.7\ndestination port      443'],
+        ['enrich', 'source device   WS-207 (10.20.6.31 leased that morning)\nsource user     Priya Nair'],
+        ['store', `tier:  searchable\nthe ${DRIFT_FAIL_PCT}% gap in firewall detection is closed, and the\nreplayed lines are checked too`],
+      ] },
+    ];
+    const PIPE_RULES = [
+      ['Land raw before you parse', 'Every line is written to a durable queue and a raw archive first. Parsing can then fail, change or be re-run without losing anything.'],
+      ['Unknown is neither dropped nor trusted', 'Staged lines are searchable and swept for known-bad values, but they don\'t feed entity linking or detection rules until a parser is approved.'],
+      ['Map shapes, not lines', 'Templates group millions of lines into a few shapes. Each shape is worked out once.'],
+      ['Parsers are code', 'Versioned, tested in shadow on real staged lines, approved by an owner, and possible to roll back.'],
+      ['Replay never stores a line twice', 'Each line keeps its connection and queue position, so re-running a stage doesn\'t create duplicates.'],
+      ['Watch every parser', 'A rising failure rate, or a new template on a known connection, means the format drifted. Failed lines go to staging and the owner is paged.'],
+      ['Be honest about time', 'Until the time field is known, the arrival time stands in and is marked. Replay corrects it, so late alerts carry the right time.'],
+      ['Know the cost', 'Staging and the raw archive sit in cheap storage with their own retention. Only understood data goes to the expensive searchable tier.'],
+    ];
+    const pipe = { scen: 1, i: 0 };
+    let pipeLastLayout = null;
+
+    function pipeLayout() {
+      const w = $('pipe-graph').clientWidth;
+      return w && w < 760 ? PIPE_LAYOUT.narrow : PIPE_LAYOUT.wide;
+    }
+    // Where the line from a box's center towards a point leaves the box.
+    function boxExit([cx, cy], [tx, ty], hw, hh) {
+      const dx = tx - cx, dy = ty - cy;
+      const t = Math.min(dx ? hw / Math.abs(dx) : Infinity, dy ? hh / Math.abs(dy) : Infinity);
+      return [cx + dx * t, cy + dy * t];
+    }
+
+    function renderPipeGraph() {
+      const L = pipeLayout();
+      pipeLastLayout = L;
+      const sc = PIPE_SCENARIOS[pipe.scen];
+      const path = sc.steps.map(st => st[0]);
+      const done = new Set(path.slice(0, pipe.i + 1));
+      const travelled = new Set();
+      for (let k = 0; k < pipe.i; k++) travelled.add(`${path[k]}>${path[k + 1]}`);
+      const svg = s('svg', { viewBox: `0 0 ${L.w} ${L.h}` });
+      svg.append(s('defs', {},
+        s('marker', { id: 'p-arrow', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' }, s('path', { d: 'M0 0 L10 5 L0 10z', fill: 'var(--muted)' })),
+        s('marker', { id: 'p-arrow-on', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' }, s('path', { d: 'M0 0 L10 5 L0 10z', fill: 'var(--a)' }))));
+      const hw = L.nw / 2, hh = L.nh / 2;
+      for (const [a, b, label] of PIPE_EDGES) {
+        const on = travelled.has(`${a}>${b}`);
+        const pa = L.pos[a], pb = L.pos[b];
+        let d;
+        if (a === 'approve' && b === 'replay') d = L.loop(pa, pb);
+        else {
+          const p1 = boxExit(pa, pb, hw, hh), p2 = boxExit(pb, pa, hw + 2, hh + 2);
+          d = `M${p1[0]} ${p1[1]} L ${p2[0]} ${p2[1]}`;
+        }
+        svg.append(s('path', { class: `p-edge${on ? ' on' : ''}`, d, 'marker-end': `url(#${on ? 'p-arrow-on' : 'p-arrow'})` }));
+        if (label) {
+          const [lx, ly, anchor] = L.labels[`${a}>${b}`];
+          svg.append(s('text', { class: `p-edge-label${on ? ' on' : ''}`, x: lx, y: ly, 'text-anchor': anchor }, label));
+        }
+      }
+      const current = path[pipe.i];
+      for (const [id, st] of Object.entries(STAGES)) {
+        const [x, y] = L.pos[id];
+        const cls = ['p-node', st.unknown ? 'unknown' : '', id === current ? 'current' : done.has(id) ? 'visited' : ''].join(' ');
+        const g = s('g', { class: cls, tabindex: 0, role: 'button', 'aria-label': `${st.t}: ${st.s}` });
+        g.append(s('rect', { class: 'box', x: x - hw, y: y - hh, width: L.nw, height: L.nh, rx: 9 }));
+        g.append(s('text', { class: 't', x, y: y - 3, 'text-anchor': 'middle' }, st.t));
+        g.append(s('text', { class: 's', x, y: y + 13, 'text-anchor': 'middle' }, st.s));
+        if (st.step) {
+          const bw = st.step.length > 1 ? 52 : 40;
+          g.append(s('g', { class: 'p-badge' }, s('rect', { x: x + hw - bw + 6, y: y - hh - 9, width: bw, height: 16, rx: 8 }),
+            s('text', { x: x + hw - bw / 2 + 6, y: y - hh + 3, 'text-anchor': 'middle' }, `Step ${st.step}`)));
+        }
+        const pick = () => pipeSelect(id);
+        g.addEventListener('click', pick);
+        g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(); } });
+        svg.append(g);
+      }
+      put($('pipe-graph'), svg);
+    }
+
+    // Clicking a stage jumps to its next visit on the current line's path (wrapping round), if it has one.
+    function pipeSelect(id) {
+      const path = PIPE_SCENARIOS[pipe.scen].steps.map(st => st[0]);
+      const later = path.findIndex((p, k) => p === id && k > pipe.i);
+      const any = path.indexOf(id);
+      if (later >= 0) pipe.i = later;
+      else if (any >= 0) pipe.i = any;
+      else { pipe.offPath = id; renderPipe(); return; }
+      pipe.offPath = null;
+      renderPipe();
+    }
+
+    function renderPipe() {
+      const sc = PIPE_SCENARIOS[pipe.scen];
+      put($('pipe-scen'), PIPE_SCENARIOS.map((x, k) => h('button', { type: 'button', 'aria-pressed': String(k === pipe.scen),
+        onclick: () => { pipe.scen = k; pipe.i = 0; pipe.offPath = null; renderPipe(); } }, x.label)));
+      renderPipeGraph();
+      const [stageId, line, note] = sc.steps[pipe.i];
+      const id = pipe.offPath || stageId;
+      const st = STAGES[id];
+      const nav = h('div', { class: 'nav-row' },
+        h('button', { class: 'btn', type: 'button', disabled: pipe.i === 0 && !pipe.offPath, onclick: () => { if (pipe.offPath) pipe.offPath = null; else pipe.i--; renderPipe(); } }, '← Back'),
+        h('button', { class: 'btn primary', type: 'button', disabled: pipe.i === sc.steps.length - 1 && !pipe.offPath, onclick: () => { if (pipe.offPath) pipe.offPath = null; else pipe.i++; renderPipe(); } }, 'Next stage →'),
+        h('span', { class: 'small muted' }, pipe.offPath ? 'Not on this line\'s path' : `Stage ${pipe.i + 1} of ${sc.steps.length}`));
+      put($('pipe-panel'),
+        h('div', { class: 'col' },
+          h('span', { class: 'eyebrow' }, st.unknown ? 'Unknown-format path' : 'Known-format path'),
+          h('h4', {}, st.t),
+          h('p', { class: 'small' }, st.what),
+          !pipe.offPath && note ? h('p', { class: 'small', style: 'color:var(--a);font-weight:600' }, note) : null,
+          st.expert ? h('div', { class: 'expert' }, h('b', {}, 'The design choice: '), st.expert) : null,
+          nav),
+        h('div', { class: 'col' },
+          h('span', { class: 'eyebrow' }, pipe.offPath ? 'This line doesn\'t pass here' : `The line at this point · ${sc.label.toLowerCase()}`),
+          pipe.offPath
+            ? h('p', { class: 'small muted' }, `"${sc.label}" never reaches ${st.t}. Pick another line to follow, or press Next to carry on.`)
+            : h('div', { class: 'line-at' }, line)));
+    }
+
+    put($('pipe-legend'),
+      h('span', {}, (() => { const v = s('svg', { viewBox: '0 0 26 12', 'aria-hidden': 'true' }); v.append(s('rect', { x: 1, y: 1, width: 24, height: 10, rx: 3, fill: 'var(--surface)', stroke: 'var(--line)', 'stroke-width': 1.5 })); return v; })(), 'known-format path'),
+      h('span', {}, (() => { const v = s('svg', { viewBox: '0 0 26 12', 'aria-hidden': 'true' }); v.append(s('rect', { x: 1, y: 1, width: 24, height: 10, rx: 3, fill: 'var(--surface)', stroke: 'var(--undetected)', 'stroke-dasharray': '5 3', 'stroke-width': 1.5 })); return v; })(), 'unknown-format path: staged until understood'),
+      h('span', {}, (() => { const v = s('svg', { viewBox: '0 0 26 12', 'aria-hidden': 'true' }); v.append(s('path', { d: 'M1 6 L25 6', stroke: 'var(--a)', 'stroke-width': 2.6 })); return v; })(), 'the line\'s route so far'));
+    put($('pipe-rules'), PIPE_RULES.map(([b, t]) => h('div', {}, h('b', {}, b), h('span', {}, t))));
+    new ResizeObserver(() => { if (pipeLayout() !== pipeLastLayout) renderPipeGraph(); }).observe($('pipe-graph'));
+    renderPipe();
 
     // =====================================================================
     // Chapter 3: seen it before, or new?

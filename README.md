@@ -40,7 +40,7 @@ Each story's verdict also lists what could go wrong with the AI-assisted team in
 A separate hands-on page: how a security platform works out that logs from many systems (an endpoint sensor, the firewall, DNS, DHCP, the sign-in service, the people directory) describe the same laptop or the same person. Four chapters:
 
 1. **Same thing, many names:** step through the techniques and watch 14 apparently different things become three.
-2. **A feed you've never seen:** work out what an unknown log format's fields mean from three clues, and see what a flipped mapping does.
+2. **A feed you've never seen:** follow a line through the ingest pipeline (a known source, a new source that is staged until a parser is approved, and a known source whose format changed), then work out what an unknown format's fields mean from three clues, and see what a flipped mapping does.
 3. **Seen it before, or new?:** score incoming records against known entities, move the thresholds, and switch off the safeguards to see what breaks.
 4. **"That's the same one":** an analyst corrects the match; see the merge, the re-filed history, and the alert that was hiding across two IDs.
 
