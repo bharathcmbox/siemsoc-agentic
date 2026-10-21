@@ -21,7 +21,7 @@ All six planned phases are built and live at **https://bharathcmbox.github.io/si
 ## Layout
 
 - `index.html`: the single-page app, with four screens: home (story picker), exec (race view), analyst (detailed view), risks (what AI agents can get wrong)
-- `entities.html`: the Entity Resolution Lab, a separate self-contained page (inline CSS and JS, no imports) in four chapters: connecting logs, an unknown log format, known vs new entity, and a person's merge. Its palette is a copy of `css/theme.css` and must stay in step with it; its numbers are in `docs/assumptions.md` §7b; its concepts are in `docs/entity-resolution.md`. It shares the theme setting (`soc-sim.theme`) with the app
+- `entities.html`: the Entity Resolution Lab, a separate self-contained page (inline CSS and JS, no imports) in four chapters: connecting logs, an unknown log format (opening with an interactive ingest pipeline: known path, staging path, replay), known vs new entity, and a person's merge. Its palette is a copy of `css/theme.css` and must stay in step with it; its numbers are in `docs/assumptions.md` §7b; its concepts are in `docs/entity-resolution.md`. It shares the theme setting (`soc-sim.theme`) with the app
 - `css/theme.css`: palette tokens for both themes (dark default), the bundled font, page basics
 - `css/exec.css`, `css/analyst.css`, `css/risks.css`: styles for each view
 - `js/main.js`: app controller, with shared state, playback, presets, view switch, theme toggle, and the URL hash

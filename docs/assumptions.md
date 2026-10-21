@@ -159,6 +159,18 @@ The lab is a separate page and doesn't feed the simulator's engine. Its figures 
 | A person checks first | 40–74 | Illustrative |
 | Keep the field under its own name below | 40 | Illustrative |
 
+**Ingest pipeline (chapter 2).** Figures shown while following a line through the pipeline.
+
+| Parameter | Value | Source |
+|---|---|---|
+| Staging retention | 14 days | Illustrative |
+| Shadow test: lines parsed, to pass | 99% | Illustrative |
+| Shadow test: required fields filled, to pass | 95% | Illustrative |
+| New gateway: lines staged before the parser is approved | 48,210 | Illustrative (scenario) |
+| Firewall after an update: share of lines the old parser can't read | 31% | Illustrative (scenario) |
+| Normal parse-failure rate for that parser | 0.02% | Illustrative (scenario) |
+| Firewall after an update: failed lines replayed | 9,870 | Illustrative (scenario) |
+
 **Matching points (chapter 3).** Points for one candidate are added up and capped at 0–100.
 
 | Evidence | Points | Source |
