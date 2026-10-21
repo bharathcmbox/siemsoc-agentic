@@ -296,6 +296,8 @@
     details[open] summary { margin-bottom: 10px; }
 
     /* ---------- chapter 4: merge ---------- */
+    /* In one column, the tag and its steps come first, so nothing above the buttons changes height. */
+    @media (max-width: 860px) { .ch4-actions { order: -1; } }
     .entity-cards { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
     @media (max-width: 620px) { .entity-cards { grid-template-columns: 1fr; } }
     .ent { border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: grid; gap: 6px; align-content: start; font-size: 0.86rem; transition: opacity .3s; }
@@ -365,6 +367,7 @@
         </div>
         <div class="card" style="display:grid;gap:16px">
           <div class="steps" id="ch1-steps" role="group" aria-label="Techniques"></div>
+          <div class="nav-row" id="ch1-nav"></div>
           <div class="ch1-top">
             <div class="graph">
               <div id="ch1-graph" role="img" aria-label="Identifiers and the links found between them"></div>
@@ -392,6 +395,7 @@
           </div>
           <div id="pipe-graph" role="img" aria-label="Ingest pipeline: a known-format path and an unknown-format path that stages lines until a parser is approved, then replays them"></div>
           <div class="legend" id="pipe-legend"></div>
+          <div class="nav-row" id="pipe-nav"></div>
           <div class="pipe-panel" id="pipe-panel" aria-live="polite"></div>
         </div>
         <div class="card" style="display:grid;gap:12px">
@@ -477,10 +481,10 @@
               <p class="small muted">Detection rule: <b style="color:var(--ink)">alert when one device has 5 or more failed sign-ins within 60 minutes.</b></p>
             </div>
           </div>
-          <div class="card" style="display:grid;gap:14px">
+          <div class="card ch4-actions" style="display:grid;gap:14px">
             <div class="reason" id="ch4-tag"></div>
-            <div class="flow" id="ch4-flow" aria-live="polite"></div>
             <div class="nav-row" id="ch4-nav"></div>
+            <div class="flow" id="ch4-flow" aria-live="polite"></div>
             <div class="log" id="ch4-log"></div>
           </div>
         </div>
@@ -787,17 +791,17 @@
       const fresh = EDGES.filter(e => e.step === ch1Step);
       const swatch = { canon: 'var(--muted)', strong: 'var(--ink)', bridge: 'var(--detect)', reject: 'var(--active)' };
       put($('ch1-explain'), 
-        h('span', { class: 'eyebrow' }, `Step ${ch1Step} of ${CH1_STEPS.length - 1}`),
         h('h3', {}, st.title),
         h('p', {}, st.body),
         fresh.length ? h('ul', { class: 'links-list' }, fresh.map(e => h('li', {}, h('i', { style: `background:${swatch[e.type]}` }), e.why))) : null,
         h('div', { class: 'stats' },
           h('div', { class: 'stat' }, h('b', {}, String(groups.length)), h('span', {}, ch1Step >= 5 ? 'things, plus 1 relationship' : 'different things, as far as the platform can tell')),
           h('div', { class: 'stat' }, h('b', {}, `${tied} of 7`), h('span', {}, 'logs tied to the laptop or to Jordan'))),
-        h('div', { class: 'nav-row' },
-          h('button', { class: 'btn', type: 'button', disabled: ch1Step === 0, onclick: () => { ch1Step--; renderCh1(); } }, '← Back'),
-          h('button', { class: 'btn primary', type: 'button', disabled: ch1Step === CH1_STEPS.length - 1, onclick: () => { ch1Step++; renderCh1(); } }, 'Next technique →')),
       );
+      put($('ch1-nav'),
+        h('button', { class: 'btn', type: 'button', disabled: ch1Step === 0, onclick: () => { ch1Step--; renderCh1(); } }, '← Back'),
+        h('button', { class: 'btn primary', type: 'button', disabled: ch1Step === CH1_STEPS.length - 1, onclick: () => { ch1Step++; renderCh1(); } }, 'Next technique →'),
+        h('span', { class: 'small muted' }, `Step ${ch1Step} of ${CH1_STEPS.length - 1}`));
 
       put($('ch1-records'), ...RECORDS.map((r, i) => h('div', { class: 'rec' },
         h('div', { class: 'rec-head' },
@@ -1148,7 +1152,8 @@
       const [stageId, line, note] = sc.steps[pipe.i];
       const id = pipe.offPath || stageId;
       const st = STAGES[id];
-      const nav = h('div', { class: 'nav-row' },
+      // The buttons sit in a fixed row under the diagram, so they don't move as the text changes length.
+      put($('pipe-nav'),
         h('button', { class: 'btn', type: 'button', disabled: pipe.i === 0 && !pipe.offPath, onclick: () => { if (pipe.offPath) pipe.offPath = null; else pipe.i--; renderPipe(); } }, '← Back'),
         h('button', { class: 'btn primary', type: 'button', disabled: pipe.i === sc.steps.length - 1 && !pipe.offPath, onclick: () => { if (pipe.offPath) pipe.offPath = null; else pipe.i++; renderPipe(); } }, 'Next stage →'),
         h('span', { class: 'small muted' }, pipe.offPath ? 'Not on this line\'s path' : `Stage ${pipe.i + 1} of ${sc.steps.length}`));
@@ -1158,8 +1163,7 @@
           h('h4', {}, st.t),
           h('p', { class: 'small' }, st.what),
           !pipe.offPath && note ? h('p', { class: 'small', style: 'color:var(--a);font-weight:600' }, note) : null,
-          st.expert ? h('div', { class: 'expert' }, h('b', {}, 'The design choice: '), st.expert) : null,
-          nav),
+          st.expert ? h('div', { class: 'expert' }, h('b', {}, 'The design choice: '), st.expert) : null),
         h('div', { class: 'col' },
           h('span', { class: 'eyebrow' }, pipe.offPath ? 'This line doesn\'t pass here' : `The line at this point · ${sc.label.toLowerCase()}`),
           pipe.offPath
